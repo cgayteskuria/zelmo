@@ -1,0 +1,12 @@
+# Réinitialisation de la démo ZELMO — toutes les heures
+# Ce fichier est à copier dans /etc/cron.d/ dans le conteneur Docker
+
+# Variables d'environnement pour mysql (adapter selon votre config)
+SHELL=/bin/bash
+DB_HOST=db
+DB_PORT=3306
+DB_NAME=zelmo
+DB_USER=zelmo
+DB_PASS=zelmo
+
+0 * * * * root /scripts/reset_demo.sh >> /var/log/zelmo/reset_demo.log 2>&1

@@ -2,8 +2,9 @@
 
 > Application de gestion d'entreprise complète : comptabilité, ventes, achats, CRM, stocks, RH, ticketing et suivi du temps.
 
-<!-- SCREENSHOT : Tableau de bord principal -->
-<!-- ![Dashboard](docs/screenshots/dashboard.png) -->
+**[🌐 zelmo.fr](https://zelmo.fr)** — **[🏢 skuria.fr](https://skuria.fr)**
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ---
 
@@ -352,7 +353,8 @@ zelmo/
 ├── database/                   # Scripts SQL
 │   ├── schema.sql              # Schéma complet (92 tables)
 │   ├── initialize_db.sql       # Données de référence initiales
-│   └── demo-data.sql           # Données de démonstration
+│   ├── demo-data.sql           # Données de démonstration
+│   └── generate_initialize_db.sh  # Script de génération de initialize_db.sql
 │
 ├── docs/                       # Documentation technique
 │   └── MULTI-TENANT-CONFIG.md  # Guide multi-tenant

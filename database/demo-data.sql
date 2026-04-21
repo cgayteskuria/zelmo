@@ -4,6 +4,12 @@ SET time_zone = "+00:00";
 SET FOREIGN_KEY_CHECKS = 0;
 
 
+REPLACE INTO `document_doc` VALUES (1, '2026-04-21 13:52:35', '2026-04-21 13:52:35', 84, 84, 'logo.png', '1776786755_large.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+REPLACE INTO `document_doc` VALUES (2, '2026-04-21 13:52:42', '2026-04-21 13:52:42', 84, 84, 'logo.png', '1776786762_printable.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+REPLACE INTO `document_doc` VALUES (3, '2026-04-21 13:52:49', '2026-04-21 13:52:49', 84, 84, 'favicon.png', '1776786769_square.png', 'image/png', 113930, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+REPLACE INTO `company_cop` VALUES (1, NULL, '2026-04-21 13:52:49', NULL, 84, 'BACK TO THE FUTUR Cie', '1 Place de l\'Horloge', '75008', 'Paris', '01 02 03 04 05', NULL, '123 456 789', 'SAS', 'Paris', '500 000', '5829C', 'FR12345695401', -1, 1, 3, 2, '/company/cgv.pdf', 27, 28, 6, '- Veuillez saisir votre réponse au-dessus de cette ligne -', 'demo_webhook_token_replace_me', '', '', '');
+
 
 INSERT INTO `contact_ctc` (`ctc_id`, `ctc_created`, `ctc_updated`, `fk_usr_id_author`, `fk_usr_id_updater`, `fk_ptr_id`, `ctc_firstname`, `ctc_lastname`, `ctc_email`, `ctc_phone`, `ctc_mobile`, `ctc_job_title`, `ctc_receive_invoice`, `ctc_receive_saleorder`, `ctc_is_active`, `ctc_Linkedin_url`) VALUES
 (205, NULL, '2025-07-29 12:29:04', NULL, 84, 208, '', '', 'contact1@demo.fr', '', '06 11 22 33 44', '', 0, 0, 0, NULL),
@@ -2051,9 +2057,9 @@ REPLACE INTO `time_project_tpr` VALUES (1, 'Projet 88 miles', NULL, 0, '#7c3aed'
 REPLACE INTO `expense_reports_exr` VALUES (9, '2026-01-29 16:56:07', '2026-03-10 16:53:06', 84, 'NDF250007', 'NDF 202512', NULL, '2025-12-01', '2025-12-31', 'accounted', '2026-03-10 17:52:09', '2026-03-10 17:52:54', NULL, NULL, 1123.69, 1242.29, 118.60, 1242.29, 0, NULL);
 REPLACE INTO `expense_reports_exr` VALUES (11, '2026-02-12 16:56:41', '2026-03-10 15:37:16', 84, 'NDF260002', 'NDF202601', NULL, '2026-01-01', '2026-01-31', 'draft', NULL, NULL, NULL, NULL, 376.56, 421.22, 44.66, 421.22, 0, NULL);
 
-REPLACE INTO `expenses_exp` VALUES (1, '2026-01-29 16:58:54', '2026-01-29 16:58:54', 9, 4, '2025-12-07', 'Lot de 500 prospectus "Sauvez l'horloge"', 72.44, 86.93, 14.49, 'N° document: 017425 | Réf: VDIDJ-95207');
+REPLACE INTO `expenses_exp` VALUES (1, '2026-01-29 16:58:54', '2026-01-29 16:58:54', 9, 4, '2025-12-07', 'Lot de 500 prospectus "Sauvez l\'horloge"', 72.44, 86.93, 14.49, 'N° document: 017425 | Réf: VDIDJ-95207');
 REPLACE INTO `expenses_exp` VALUES (2, '2026-01-29 16:59:46', '2026-01-29 16:59:46', 9, 1, '2025-12-12', 'Caisse de Plutonium\'s', 9.91, 10.90, 0.99, 'N° document: 15911 | Réf: VDIDJ-95785');
-REPLACE INTO `expenses_exp` VALUES (3, '2026-01-29 17:01:21', '2026-01-29 17:01:21', 9, 4, '2025-12-08', '6 bidons d'huile Texaco', 33.33, 40.00, 6.67, 'Réf: VDIDJ-96608');
+REPLACE INTO `expenses_exp` VALUES (3, '2026-01-29 17:01:21', '2026-01-29 17:01:21', 9, 4, '2025-12-08', '6 bidons d\'huile Texaco', 33.33, 40.00, 6.67, 'Réf: VDIDJ-96608');
 REPLACE INTO `expenses_exp` VALUES (4, '2026-01-29 17:02:43', '2026-01-29 17:02:43', 9, 1, '2025-12-10', 'LE CAFE DE LA CITE', 3.64, 4.00, 0.36, 'N° document: 615170 | Réf: VDIDJ-97315');
 REPLACE INTO `expenses_exp` VALUES (5, '2026-01-29 17:07:20', '2026-01-29 17:07:20', 9, 4, '2025-12-20', 'Canette de Pepsi Free', 39.00, 42.90, 3.90, 'N° document: 35961 | Réf: VDIDJ-99351');
 REPLACE INTO `expenses_exp` VALUES (8, '2026-01-29 17:09:37', '2026-01-29 17:09:37', 9, 1, '2025-12-01', 'Canette de Pepsi Free', 137.45, 151.20, 13.75, 'N° document: 19903 | Réf: VDIDJ-99970');

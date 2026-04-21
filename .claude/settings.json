@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Read(//c/Users/c.gayte/.claude/projects/c--Users-c-gayte-Documents--CLIENT-SKURIA-skuria-fr-sksuite/**)",
+      "Bash(git branch *)"
+    ]
+  }
+}
