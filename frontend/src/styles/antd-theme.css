@@ -1,0 +1,704 @@
+/* ═══════════════════════════════════════════════════════════════
+   Overrides Ant Design (Google style)
+   Import APRÈS antd/dist/reset.css et index.css
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Ligne de mesure interne Ant Design (aria-hidden) ───────── */
+.ant-table-measure-row {
+  display: none !important;
+}
+
+/* ── Table — carte avec bordure arrondie ─────────────────────── */
+
+.ant-table-wrapper {
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+  overflow: hidden !important;
+}
+
+/* Police globale */
+.ant-table {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+}
+
+/* ── En-tête : fond neutre, texte muted uppercase ──────────── */
+
+.ant-table-thead>tr>th,
+.ant-table-thead>tr>td {
+  background-color: var(--bg-surface) !important;
+  color: var(--color-muted) !important;
+  font-size: var(--text-xs) !important;
+  font-weight: var(--font-medium) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.4px !important;
+  padding: var(--space-sm) var(--space-lg) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  white-space: nowrap;
+}
+
+/* Pas de border-radius sur les coins du th */
+.ant-table-thead>tr>th:first-child,
+.ant-table-thead>tr>th:last-child {
+  border-start-start-radius: 0 !important;
+  border-start-end-radius: 0 !important;
+}
+
+/* ── Cellules corps ─────────────────────────────────────────── */
+
+.ant-table-tbody>tr>td {
+  font-size: var(--text-base) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* Dernière ligne : pas de border-bottom */
+.ant-table-tbody>tr:last-child>td {
+  border-bottom: none !important;
+}
+
+/* ── Striping via rowClassName (table-row-light / table-row-striped) */
+
+.ant-table-tbody>tr.table-row-light>td {
+  background-color: #ffffff !important;
+}
+
+.ant-table-tbody>tr.table-row-striped>td {
+  background-color: var(--bg-surface) !important;
+}
+
+/* ── Hover ──────────────────────────────────────────────────── */
+
+.ant-table-tbody>tr.table-row-light:hover>td,
+.ant-table-tbody>tr.table-row-striped:hover>td,
+.ant-table-tbody>tr:hover>td {
+  background-color: var(--bg-active) !important;
+  cursor: pointer;
+}
+
+/* ── Rows spéciales (marges, titres, sous-totaux) — conservées ─ */
+
+.ant-table-tbody>tr.margin-total-row>td {
+  background-color: #fff0f6 !important;
+  font-weight: bold !important;
+  border-top: 2px solid #c30079 !important;
+}
+
+.ant-table-tbody>tr.margin-total-row:hover>td {
+  background-color: #ffe1ef !important;
+}
+
+.ant-table-tbody>tr.row-title>td {
+  background-color: #ffe6f2 !important;
+  font-weight: bold !important;
+}
+
+.ant-table-tbody>tr.row-subtotal>td {
+  background-color: #ffe6f2 !important;
+  font-weight: 600 !important;
+}
+
+/* ── Boutons ─────────────────────────────────────────────────── */
+
+.ant-btn {
+  font-family: var(--font) !important;
+  font-weight: var(--font-medium) !important;
+}
+
+.ant-btn-primary {
+  background-color: var(--color-active) !important;
+  border-color: var(--color-active) !important;
+}
+
+.ant-btn-primary:hover,
+.ant-btn-primary:focus {
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+.ant-btn-secondary {
+  background: transparent;
+  color: var(--color-active) !important;
+  border: 1px solid var(--color-border) !important;
+
+}
+
+.ant-btn-secondary:hover,
+.ant-btn-secondary:focus {
+
+  background: var(--bg-active) !important;
+}
+
+/* ── Inputs, Selects, Pickers — style charte ─────────────────── */
+
+/* Input texte */
+.ant-input {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+  color: var(--color-text) !important;
+  background-color: var(--bg-content) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-input) !important;
+  padding: 9px var(--space-md) !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+  width: 100%;
+}
+
+.ant-input:hover {
+  border-color: #aaa !important;
+}
+
+.ant-input:focus {
+  border-color: var(--color-active) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12) !important;
+}
+
+/* Input avec préfixe/suffixe (affix-wrapper) */
+.ant-input-affix-wrapper {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+  color: var(--color-text) !important;
+  background-color: var(--bg-content) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-input) !important;
+  padding: 9px var(--space-md) !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+}
+
+.ant-input-affix-wrapper:hover {
+  border-color: #aaa !important;
+}
+
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  border-color: var(--color-active) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12) !important;
+}
+
+/* Input dans affix-wrapper : pas de re-stylisation */
+.ant-input-affix-wrapper .ant-input {
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* Select — AntD 6 : .ant-select-content remplace .ant-select-selector */
+.ant-select:not(.ant-pagination-options .ant-select) .ant-select-content {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+  color: var(--color-text) !important;
+ 
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+}
+
+/* Border-radius sur le conteneur outlined */
+.ant-select-outlined:not(.ant-pagination-options .ant-select) {
+  border-radius: var(--radius-input) !important;
+}
+
+.ant-select:not(.ant-pagination-options .ant-select):hover .ant-select-content {
+  border-color: #aaa !important;
+}
+
+.ant-select-focused:not(.ant-pagination-options .ant-select) .ant-select-content {
+  border-color: var(--color-active) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12) !important;
+}
+
+/* DatePicker */
+.ant-picker {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+  color: var(--color-text) !important;
+  background-color: var(--bg-content) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-input) !important;
+  padding: 9px var(--space-md) !important;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+  width: 100%;
+}
+
+.ant-picker:hover {
+  border-color: #aaa !important;
+}
+
+.ant-picker-focused {
+  border-color: var(--color-active) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12) !important;
+}
+
+
+/* InputNumber */
+.ant-input-number {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+  color: var(--color-text) !important;
+  background-color: var(--bg-content) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-input) !important;
+  width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
+}
+
+.ant-input-number:hover {
+  border-color: #aaa !important;
+}
+
+.ant-input-number-focused {
+  border-color: var(--color-active) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.12) !important;
+}
+
+
+
+.ant-input-number {
+  padding: 4px var(--space-md) !important;
+}
+.ant-input-number.ant-input-number-sm {
+  padding: 1px var(--space-sm) !important;
+  border : solid red 1px;
+}
+
+/* ── Tags ────────────────────────────────────────────────────── */
+
+.ant-tag {
+  border-radius: 20px !important;
+  font-family: var(--font) !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* ── Switch ──────────────────────────────────────────────────── */
+
+.ant-switch:not(.ant-switch-checked) {
+  background-color: #bfbfbf !important;
+}
+
+/* ── Menu (sidebar) ──────────────────────────────────────────── */
+
+.ant-menu {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+}
+
+.ant-menu-inline .ant-menu-item,
+.ant-menu-inline .ant-menu-submenu-title {
+  border-radius: var(--radius-item) !important;
+  margin-inline: 4px !important;
+  width: calc(100% - 8px) !important;
+  height: 30px;
+}
+
+.ant-menu-inline .ant-menu-item-selected::after {
+  display: none !important;
+}
+
+/* Icônes items inactifs */
+.ant-menu-item .anticon,
+.ant-menu-submenu-title .anticon {
+  color: var(--color-muted) !important;
+}
+
+/* Item actif — fond bleu clair + texte + icône bleus */
+.ant-menu-item-selected {
+  background-color: var(--bg-active) !important;
+  color: var(--color-active) !important;
+}
+
+.ant-menu-item-selected .anticon,
+.ant-menu-item-selected .ant-menu-item-icon {
+  color: var(--color-active) !important;
+}
+
+.ant-menu-item-selected .ant-menu-title-content {
+  color: var(--color-active) !important;
+  font-weight: var(--font-medium) !important;
+}
+
+/* Titre de groupe (type: 'group') — section header non-cliquable */
+.ant-menu-item-group-title {
+  font-size: var(--text-xs) !important;
+  font-weight: var(--font-bold) !important;
+  color: var(--color-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: var(--space-sm) var(--space-md) var(--space-xs) !important;
+  margin-top: var(--space-xs) !important;
+}
+
+/* ── Drawer ──────────────────────────────────────────────────── */
+
+.ant-drawer-header {
+  background: var(--bg-surface) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.ant-drawer-title {
+  color: var(--color-text) !important;
+  font-size: var(--text-md) !important;
+  font-weight: var(--font-medium) !important;
+  font-family: var(--font) !important;
+}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+
+.ant-modal-header {
+  border-bottom: 1px solid var(--color-border) !important;
+  padding-bottom: 12px !important;
+}
+
+.ant-modal-title {
+  color: var(--color-text) !important;
+  font-weight: var(--font-medium) !important;
+  font-family: var(--font) !important;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────── */
+
+.ant-tabs {
+  font-family: var(--font) !important;
+}
+
+.ant-tabs-tab {
+  font-weight: var(--font-medium) !important;
+}
+
+/* ── Table footer & Pagination ───────────────────────────────── */
+
+/*
+  DOM Ant Design : [total-text] [prev] [items…] [next] [options]
+  Visuel souhaité : [options] [total-text]  ···  [prev] [items] [next]
+  → CSS order + margin-inline-end:auto sur total-text pour séparer les groupes
+*/
+
+/* Zone footer */
+.ant-table-pagination.ant-pagination {
+  background: var(--bg-surface) !important;
+  border-top: 1px solid var(--color-border) !important;
+  margin: 0 !important;
+  padding: var(--space-sm) var(--space-lg) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--space-xs) !important;
+}
+
+/* Police globale */
+.ant-pagination {
+  font-family: var(--font) !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* ── Groupe GAUCHE ──────────────────────────────────────────── */
+
+/* 1. Sélecteur "lignes par page" → ordre -2 (tout à gauche) */
+.ant-table-pagination .ant-pagination-options {
+  order: -2 !important;
+  margin-inline-start: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: var(--space-xs) !important;
+}
+
+/* Label "Lignes par page :" injecté en CSS avant le select */
+.ant-table-pagination .ant-pagination-options::before {
+  content: 'Lignes par page :';
+  font-size: var(--text-sm) !important;
+  color: var(--color-muted) !important;
+  font-family: var(--font) !important;
+  white-space: nowrap;
+}
+
+/* Select de taille (pagination) — AntD 6 */
+.ant-table-pagination .ant-pagination-options .ant-select-content {
+  border-radius: 6px !important;
+  border-color: var(--color-border) !important;
+  background: var(--bg-content) !important;
+  height: 28px !important;
+  font-size: var(--text-sm) !important;
+  font-family: var(--font) !important;
+}
+
+.ant-table-pagination .ant-pagination-options .ant-select-content-value {
+  font-size: var(--text-sm) !important;
+  line-height: 26px !important;
+  color: var(--color-text) !important;
+}
+
+/* 2. Total "1–50 sur 124" → ordre -1, flex:1 pour pousser la nav à droite */
+.ant-table-pagination .ant-pagination-total-text {
+  order: -1 !important;
+  font-size: var(--text-sm) !important;
+  color: var(--color-muted) !important;
+  font-family: var(--font) !important;
+  flex: 1 !important;
+  /* occupe l'espace, repousse la nav à droite */
+  margin-inline-end: 0 !important;
+}
+
+/* ── Groupe DROIT : nav prev / items / next ─────────────────── */
+
+/* Boutons de page (numéros) — order: 0 par défaut → restent à droite */
+.ant-table-pagination .ant-pagination-item {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  line-height: 32px !important;
+  border-radius: var(--radius-item) !important;
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--font) !important;
+  font-size: var(--text-sm) !important;
+  margin-inline: 1px !important;
+}
+
+.ant-table-pagination .ant-pagination-item a {
+  color: var(--color-muted) !important;
+  font-size: var(--text-sm) !important;
+  padding: 0 !important;
+}
+
+.ant-table-pagination .ant-pagination-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+.ant-table-pagination .ant-pagination-item:hover a {
+  color: var(--color-text) !important;
+}
+
+/* Page active */
+.ant-table-pagination .ant-pagination-item-active {
+  background: var(--bg-active) !important;
+  border: none !important;
+}
+
+.ant-table-pagination .ant-pagination-item-active a {
+  color: var(--color-active) !important;
+  font-weight: var(--font-medium) !important;
+}
+
+/* Boutons précédent / suivant */
+.ant-table-pagination .ant-pagination-prev,
+.ant-table-pagination .ant-pagination-next {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  line-height: 32px !important;
+  margin-inline: 1px !important;
+}
+
+.ant-table-pagination .ant-pagination-prev .ant-pagination-item-link,
+.ant-table-pagination .ant-pagination-next .ant-pagination-item-link {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--radius-item) !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--color-muted) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ant-table-pagination .ant-pagination-prev:hover .ant-pagination-item-link,
+.ant-table-pagination .ant-pagination-next:hover .ant-pagination-item-link {
+  background: var(--bg-hover) !important;
+  color: var(--color-text) !important;
+}
+
+/* Ellipsis */
+.ant-pagination-jump-prev .ant-pagination-item-container .ant-pagination-item-link-icon,
+.ant-pagination-jump-next .ant-pagination-item-container .ant-pagination-item-link-icon {
+  color: var(--color-active) !important;
+}
+
+/* ── Card ────────────────────────────────────────────────────── */
+
+.ant-card {
+  font-family: var(--font) !important;
+}
+
+/* ── Dropdown ────────────────────────────────────────────────── */
+
+.ant-dropdown-menu {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+}
+
+/* ── Select dropdown ─────────────────────────────────────────── */
+
+.ant-select-dropdown {
+  font-family: var(--font) !important;
+  font-size: var(--text-base) !important;
+}
+
+/* ── Popover ─────────────────────────────────────────────────── */
+
+.ant-popover-inner {
+  border-radius: var(--radius-card) !important;
+  font-family: var(--font) !important;
+}
+
+/* ── Form ────────────────────────────────────────────────────── */
+
+.ant-form-item-label>label {
+  font-family: var(--font) !important;
+  font-size: var(--text-sm) !important;
+  color: var(--color-text) !important;
+  font-weight: var(--font-medium) !important;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+
+.ant-tooltip {
+  font-family: var(--font) !important;
+  font-size: var(--text-sm) !important;
+}
+
+/* On répète le sélecteur pour augmenter la priorité et on écrase le !important */
+.no-padding-table.ant-table-wrapper .ant-table-tbody>tr>td {
+  padding: 0 !important;
+}
+
+/* N'oubliez pas le summary si vous voulez qu'il soit aligné */
+.no-padding-table.ant-table-wrapper .ant-table-summary tr>td {
+  padding: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Uniformisation hauteur des contrôles → 36px (desktop ≥ 1025px)
+   Inputs : réduction du padding vertical (9px → 7px)
+   Selects : hauteur fixée + centrage du texte sélectionné
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 1025px) {
+
+  /* ── Input texte ──────────────────────────────────────────── */
+  .ant-input {
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+  /* ── Input avec préfixe/suffixe ───────────────────────────── */
+  .ant-input-affix-wrapper {
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+  /* ── DatePicker / TimePicker ──────────────────────────────── */
+  .ant-picker {
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+
+
+
+
+  /* Centrage vertical : valeur sélectionnée et placeholder 
+  .ant-select:not(.ant-pagination-options .ant-select):not(.ant-select-multiple) .ant-select-content-value,
+  .ant-select:not(.ant-pagination-options .ant-select):not(.ant-select-multiple) .ant-select-input {
+    line-height: 28px !important; 
+  }*/
+
+  .ant-select {
+    line-height: 1.9 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Champs désactivés — fond strié, curseur not-allowed
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg-disabled: #f0f2f5;
+  --bg-disabled-stripe: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 4px,
+    rgba(0, 0, 0, 0.04) 4px,
+    rgba(0, 0, 0, 0.04) 8px
+  );
+  --color-disabled-text: #45484b;
+  --border-disabled: #d9d9d9;
+}
+
+/* Input texte désactivé */
+.ant-input[disabled],
+.ant-input-disabled {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  color: var(--color-disabled-text) !important;
+  cursor: not-allowed !important;
+}
+
+/* Affix-wrapper désactivé */
+.ant-input-affix-wrapper-disabled,
+.ant-input-affix-wrapper.ant-input-affix-wrapper-disabled {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  color: var(--color-disabled-text) !important;
+  cursor: not-allowed !important;
+}
+
+.ant-input-affix-wrapper-disabled .ant-input {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: var(--color-disabled-text) !important;
+}
+
+/* Select désactivé */
+.ant-select-disabled  {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  cursor: not-allowed !important;
+}
+
+.ant-select-disabled .ant-select-content-value,
+.ant-select-disabled .ant-select-input {
+  color: var(--color-disabled-text) !important;
+}
+
+
+/* DatePicker désactivé */
+.ant-picker-disabled,
+.ant-picker.ant-picker-disabled {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  cursor: not-allowed !important;
+}
+
+.ant-picker-disabled input,
+.ant-picker-disabled .ant-picker-input > input {
+  color: var(--color-disabled-text) !important;
+  cursor: not-allowed !important;
+}
+
+/* InputNumber désactivé */
+.ant-input-number-disabled,
+.ant-input-number.ant-input-number-disabled {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  cursor: not-allowed !important;
+}
+
+.ant-input-number-disabled input,
+.ant-input-number-disabled .ant-input-number-input {
+  color: var(--color-disabled-text) !important;
+  cursor: not-allowed !important;
+}
+
+/* Textarea désactivée */
+.ant-input[disabled].ant-input-textarea,
+textarea.ant-input[disabled] {
+  background-color: var(--bg-disabled) !important;
+  background-image: var(--bg-disabled-stripe) !important;
+  border-color: var(--border-disabled) !important;
+  color: var(--color-disabled-text) !important;
+  cursor: not-allowed !important;
+}

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>OAuth Callback</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f0f2f5;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1890ff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <p>Authentification en cours...</p>
+        <p style="font-size: 12px; color: #999;">Cette fenêtre va se fermer automatiquement</p>
+    </div>
+
+    <script>
+        // Récupérer les paramètres de l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+        const errorDescription = urlParams.get('error_description');
+        const state = urlParams.get('state');
+
+        // Envoyer les données à la fenêtre parente
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'OAUTH_CALLBACK',
+                code: code,
+                error: error,
+                error_description: errorDescription,
+                state: state
+            }, window.location.origin);
+            
+            // Fermer la popup après 1 seconde
+            setTimeout(() => {
+                window.close();
+            }, 1000);
+        } else {
+            document.body.innerHTML = '<div class="container"><p>❌ Erreur: fenêtre parente introuvable</p></div>';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# Normalise les fins de ligne automatiquement
+* text=auto
+
+# Scripts shell en LF obligatoire
+*.sh text eol=lf
+
+# SQL en LF
+*.sql text eol=lf
+
+# Fichiers binaires
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary

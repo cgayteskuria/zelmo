@@ -1,0 +1,71 @@
+/* Container principal pour l'onglet Fichiers */
+.files-tab-container {
+    position: relative;
+    min-height: 300px;
+}
+
+/* État du container lors du drag over */
+.files-tab-container.drag-over {
+    border: 2px dashed #1890ff;
+    background-color: #e6f7ff;
+    border-radius: 4px;
+}
+
+/* Overlay affiché lors du drag & drop */
+.drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(24, 144, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.drag-message {
+    text-align: center;
+    color: #1890ff;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.drag-message p {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* Amélioration du style des boutons d'actions */
+.files-tab-container .ant-btn-text {
+    color: #595959;
+}
+
+.files-tab-container .ant-btn-text:hover {
+    color: #1890ff;
+    background-color: #f0f0f0;
+}
+
+.files-tab-container .ant-btn-text.ant-btn-dangerous:hover {
+    color: #ff4d4f;
+    background-color: #fff1f0;
+}
+
+/* Style pour les liens de fichiers */
+.files-tab-container a {
+    color: #1890ff;
+    text-decoration: none;
+}
+
+.files-tab-container a:hover {
+    text-decoration: underline;
+}
+
+/* Style pour le message vide */
+.files-tab-container .ant-empty-description {
+    color: #999;
+    font-style: italic;
+}

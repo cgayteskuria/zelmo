@@ -1,0 +1,177 @@
+/**
+ * Styles globaux de l'application
+ * Ne contient QUE : variables CSS, reset base, classes utilitaires app.
+ * Les overrides Ant Design sont dans antd-theme.css
+ */
+
+:root {
+  /* ── Charte Google style ─────────────────────────────── */
+  --bg-surface:   #F8FAFD;
+  --bg-content:   #ffffff;
+  --bg-search:    #f1f3f4;
+  --bg-active:    #d2e3fc;
+  --bg-hover:     rgba(0,0,0,0.05);
+
+  --color-active: #0a84ff;
+  --color-text:   #202124;
+  --color-muted:  #5f6368;
+  --color-border: #e0e0e0;
+  --color-green:  #34a853;
+  --color-red:    #ea4335;
+  --color-yellow: #fbbc04;
+
+  --radius-pill:   24px;
+  --radius-item:   20px;
+  --radius-corner: 16px;
+  --radius-card:   12px;
+  --radius-input:  8px;
+  --radius-circle: 50%;
+
+  --font: 'Google Sans', 'Roboto', sans-serif;
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 14px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  36px;
+  --font-regular: 400;
+  --font-medium:  500;
+  --font-bold:    700;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 18px;
+  --space-xl: 24px;
+
+  --sidebar-width:   256px;
+  --header-height:   56px;
+
+  --transition-fast: 0.15s ease;
+  --transition-med:  0.2s ease;
+
+  /* ── Alias de compatibilité (composants existants) ───── */
+  --primary-color: #1a73e8;
+  --primary-dark:  #1557b0;
+  --primary-light: #4791f0;
+  --primary-hover: #1557b0;
+
+  --border-color:      var(--color-border);
+  --box-border-radius: var(--radius-card);
+  --box-border-color:  var(--color-border);
+  --box-background:    var(--bg-content);
+  --delete-color:      var(--color-red);
+  --layout-body-bg:    var(--bg-surface);
+
+  /* Police */
+  font-family: var(--font);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Reset ───────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--color-text);
+  background-color: var(--bg-surface);
+  font-family: var(--font);
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+a:hover { color: var(--primary-hover); }
+
+/* ── Ajustements Ant Design non couverts par antd-theme.css ── */
+
+/* Label de formulaire vertical */
+.ant-form-item-vertical .ant-form-item-label,
+.ant-form-item-vertical .ant-col-24.ant-form-item-label,
+.ant-form-item-vertical .ant-col-xl-24.ant-form-item-label {
+  padding: 2px 2px 4px !important;
+}
+
+/* Espacement form items */
+.ant-form-item {
+  margin-bottom: 6px;
+}
+
+/* Card body */
+.ant-card-body {
+  padding: 24px !important;
+  padding-bottom: 10px !important;
+}
+
+/* Sider transition */
+.ant-layout-sider {
+  transition: width var(--transition-med),
+              min-width var(--transition-med),
+              max-width var(--transition-med) !important;
+}
+
+/* ── Classes utilitaires application ─────────────────────── */
+
+.primary {
+  outline-color: var(--primary-hover) !important;
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #fff !important;
+}
+
+.secondary {
+  outline-color: var(--primary-hover) !important;
+  background-color: #fff !important;
+  border-color: var(--primary-color) !important;
+  color: var(--primary-color) !important;
+}
+
+.box {
+  background: var(--bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--box-border-radius);
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.form-actions-container {
+  margin-top: 24px;
+  padding: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.readOnly {
+  background-color: #f5f5f5;
+  color: #555;
+  cursor: not-allowed;
+  border: 1px dashed #d9d9d9;
+}
+
+/* ── Drag and drop ───────────────────────────────────────── */
+
+.drag-handle {
+  cursor: move;
+  color: #999;
+  font-size: 16px;
+  padding: 4px;
+}
+.drag-handle:hover { color: var(--color-active); }
+
+.dragging-row {
+  opacity: 0.5;
+  background-color: #f0f0f0;
+}

@@ -1,0 +1,48 @@
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.fleet/
+.nova/
+.zed/
+
+# ─── BACKEND (Laravel) ───────────────────────────────────────────────────────
+backend/vendor/
+backend/node_modules/
+backend/storage/app/private/
+backend/storage/*.key
+backend/storage/pail/
+backend/public/storage/
+backend/public/hot
+backend/public/build/
+backend/.env
+backend/.env.backup
+backend/.env.production
+backend/.phpunit.result.cache
+backend/.phpunit.cache/
+backend/auth.json
+backend/Homestead.json
+backend/Homestead.yaml
+
+# Configuration multi-tenant (contient des secrets)
+backend/config/tenants.php
+
+# ─── FRONTEND (React/Vite) ───────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ─── DÉPLOIEMENT ─────────────────────────────────────────────────────────────
+deploy.ps1
+
+# ─── LOGS ────────────────────────────────────────────────────────────────────
+*.log
+
+# ─── DIVERS ──────────────────────────────────────────────────────────────────
+nul
