@@ -2,7 +2,9 @@
 
 > Application de gestion d'entreprise complète : comptabilité, ventes, achats, CRM, stocks, RH, ticketing et suivi du temps.
 
-**[🌐 zelmo.fr](https://zelmo.fr)** — **[🏢 skuria.fr](https://skuria.fr)**
+Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](https://demo.zelmo.fr)** avec les identifiants suivants :
+- **Email** : admin@demo-company.fr
+- **Mot de passe** : demo2006
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -428,4 +430,4 @@ Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE
 
 ---
 
-*ZELMO — Développé avec Laravel & React.*
+*ZELMO — Développé avec Laravel & React — Outil développé par [skuria.fr](https://skuria.fr)*
