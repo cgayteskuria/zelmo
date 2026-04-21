@@ -27,6 +27,7 @@ backend/.phpunit.cache/
 backend/auth.json
 backend/Homestead.json
 backend/Homestead.yaml
+backend/tests/
 
 # Configuration multi-tenant (contient des secrets)
 backend/config/tenants.php
