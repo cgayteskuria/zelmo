@@ -1,4 +1,4 @@
-# ZELMO — ERP & CRM Open Source
+# ZELMO — ERP, CRM, Ticketing, RH & Facturation Électronique Open Source
 
 > Application de gestion d'entreprise complète, 100 % open source : comptabilité avancée, **facturation électronique Facture-X / PDP**, ventes, achats, CRM, stocks, RH, ticketing et suivi du temps.
 
