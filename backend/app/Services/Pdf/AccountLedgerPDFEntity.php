@@ -50,7 +50,7 @@ class AccountLedgerPDFEntity extends \TCPDF
         // Marges (gauche, haut, droite)
         $this->SetMargins(10, 25, 10);
         $this->SetAutoPageBreak(true, 25);
-        $this->SetFont('helvetica', '', 9);
+        $this->SetFont('dejavusans', '', 9);
 
         // Générer le PDF
         $this->generate();
@@ -74,7 +74,7 @@ class AccountLedgerPDFEntity extends \TCPDF
     public function Header()
     {
         $this->Ln(5);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->MultiCell(63, 0, "Dossier : " . $this->companyName, '', 'L', false, 0);
         $this->MultiCell(64, 0, "GRAND LIVRE", '', 'C', false, 0);
         $this->MultiCell(63, 0, "Le " . date('d/m/Y'), '', 'R', false, 1);
@@ -88,7 +88,7 @@ class AccountLedgerPDFEntity extends \TCPDF
             $periodText = 'Période du ' . $startDate . ' au ' . $endDate;
             $this->MultiCell(0, 0, $periodText, '', 'L', false, 1);
 
-            $this->SetFont('helvetica', '', 10);
+            $this->SetFont('dejavusans', '', 10);
             $filterText = '';
 
             if (!empty($this->filters['journal_name'])) {
@@ -109,7 +109,7 @@ class AccountLedgerPDFEntity extends \TCPDF
         // Utilisation de MultiCell pour les titres avec retour à la ligne
         $h = 10;
         $this->SetFillColor(200, 200, 200);
-        $this->SetFont('helvetica', '', 7);
+        $this->SetFont('dejavusans', '', 7);
         $this->MultiCell(12, $h, "N°\nMvt", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell(12, $h, "Journal", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell(15, $h, "Date", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
@@ -120,7 +120,7 @@ class AccountLedgerPDFEntity extends \TCPDF
         $this->MultiCell(10, $h, "Lett.", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell(20, $h, "Solde\nCumulé", 1, 'C', true, 1, '', '', true, 0, false, true, $h, 'M');
 
-        $this->SetFont('helvetica', '', 7);
+        $this->SetFont('dejavusans', '', 7);
         $this->headerHeight = $this->getPage() == 1 ? $this->GetY() : $this->GetY() - 5;
     }
 
@@ -171,7 +171,7 @@ class AccountLedgerPDFEntity extends \TCPDF
 
         // Total général
         $this->Ln(5);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->SetFillColor(180, 180, 180);
         $this->Cell(119, 8, 'TOTAL GÉNÉRAL', 1, 0, 'R', true);
         $this->Cell(20, 8, number_format($this->grandTotal['debit'], 2, ',', ' '), 1, 0, 'R', true);
@@ -192,14 +192,14 @@ class AccountLedgerPDFEntity extends \TCPDF
      */
     private function displayAccountSubtotal($accountCode, $solde_cumule)
     {
-        $this->SetFont('helvetica', 'B', 7);
+        $this->SetFont('dejavusans', 'B', 7);
         $this->SetFillColor(240, 240, 240);
         $this->Cell(119, 6, 'Sous-total Compte ' . $accountCode, 1, 0, 'R', true);
         $this->Cell(20, 6, number_format($this->accountSubtotals[$accountCode]['debit'], 2, ',', ' '), 1, 0, 'R', true);
         $this->Cell(20, 6, number_format($this->accountSubtotals[$accountCode]['credit'], 2, ',', ' '), 1, 0, 'R', true);
         $this->Cell(10, 6, '', 1, 0, 'C', true);
         $this->Cell(20, 6, number_format($solde_cumule, 2, ',', ' '), 1, 1, 'R', true);
-        $this->SetFont('helvetica', '', 6.5);
+        $this->SetFont('dejavusans', '', 6.5);
         $this->Ln(3);
     }
 
@@ -208,7 +208,7 @@ class AccountLedgerPDFEntity extends \TCPDF
      */
     private function displayClassSubtotal($classCode)
     {
-        $this->SetFont('helvetica', 'B', 7);
+        $this->SetFont('dejavusans', 'B', 7);
         $this->SetFillColor(180, 180, 180);
         $soldeClasse = $this->classSubtotals[$classCode]['debit'] - $this->classSubtotals[$classCode]['credit'];
 
@@ -217,7 +217,7 @@ class AccountLedgerPDFEntity extends \TCPDF
         $this->Cell(20, 8, number_format($this->classSubtotals[$classCode]['credit'], 2, ',', ' '), 1, 0, 'R', true);
         $this->Cell(10, 8, '', 1, 0, 'C', true);
         $this->Cell(20, 8, number_format($soldeClasse, 2, ',', ' '), 1, 1, 'R', true);
-        $this->SetFont('helvetica', '', 6.5);
+        $this->SetFont('dejavusans', '', 6.5);
     }
 
     /**
@@ -226,11 +226,11 @@ class AccountLedgerPDFEntity extends \TCPDF
     private function displayAccountData($accountCode, $accountData)
     {
         // Titre du compte
-        $this->SetFont('helvetica', 'B', 9);
+        $this->SetFont('dejavusans', 'B', 9);
         $this->SetFillColor(220, 220, 220);
         $accountTitle = "Compte " . $accountCode . " - " . $accountData['account_label'];
         $this->Cell(189, 8, $accountTitle, 1, 1, 'L', true);
-        $this->SetFont('helvetica', '', 6.5);
+        $this->SetFont('dejavusans', '', 6.5);
 
         $solde_cumule = 0;
 
@@ -262,7 +262,7 @@ class AccountLedgerPDFEntity extends \TCPDF
     public function Footer()
     {
         $this->SetY(-15);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $this->Cell(0, 10, 'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, 0, 'C');
     }
 }

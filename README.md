@@ -1,6 +1,6 @@
 # ZELMO — ERP & CRM Open Source
 
-> Application de gestion d'entreprise complète : comptabilité, ventes, achats, CRM, stocks, RH, ticketing et suivi du temps.
+> Application de gestion d'entreprise complète, 100 % open source : comptabilité avancée, **facturation électronique Facture-X / PDP**, ventes, achats, CRM, stocks, RH, ticketing et suivi du temps.
 
 Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](https://demo.zelmo.fr)** avec les identifiants suivants :
 - **Email** : admin@demo-company.fr
@@ -13,47 +13,144 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 ## Sommaire
 
 1. [Fonctionnalités](#fonctionnalités)
+   - [Facturation Électronique](#-facturation-électronique-facture-x--pdp)
+   - [Comptabilité](#comptabilité)
+   - [Ventes](#ventes)
+   - [Achats](#achats)
+   - [CRM](#crm--gestion-de-la-relation-client)
+   - [Stocks](#stocks)
+   - [RH & Notes de frais](#rh--notes-de-frais)
+   - [Suivi du temps](#suivi-du-temps)
+   - [Ticketing](#assistance--ticketing)
+   - [Tableau de bord](#tableau-de-bord)
+   - [Paramètres](#paramètres--administration)
 2. [Stack technique](#stack-technique)
 3. [Prérequis](#prérequis)
 4. [Installation](#installation)
-   - [Base de données](#1-base-de-données)
-   - [Backend](#2-backend-laravel)
-   - [Frontend](#3-frontend-react)
 5. [Configuration multi-tenant](#configuration-multi-tenant)
 6. [Premiers pas](#premiers-pas)
 7. [Structure du projet](#structure-du-projet)
 8. [Déploiement en production](#déploiement-en-production)
+9. [Licence](#licence)
 
 ---
 
 ## Fonctionnalités
 
-### Tableau de bord
-- Vue consolidée de l'activité (ventes, paiements, tickets, temps)
-- Graphiques et indicateurs clés
+---
 
-<!-- SCREENSHOT : Dashboard avec graphiques -->
+### ⚡ Facturation Électronique (Facture-X / PDP)
+
+ZELMO intègre nativement la **facturation électronique française** conforme à la réforme issue de l'ordonnance 2021-1190, obligatoire pour toutes les entreprises assujetties à la TVA.
+
+#### Génération Facture-X
+- Génération automatique de fichiers **PDF/A-3 + XML CII (profil EN 16931)** — le standard européen Facture-X
+- Données structurées embarquées dans le PDF : identité vendeur/acheteur, lignes, taxes, montants, conditions de paiement, mentions légales
+- Compatible avec tous les logiciels comptables capables de lire le format Facture-X
+
+#### Connexion à un PA/PDP configurable
+- Architecture **agnostique du PA** : configurez l'URL API et le token Bearer de n'importe quel Partenaire Accrédité (PDP)
+- Sélection par profil de connexion préconfigurés ou mode « Personnalisé »
+- Test de connexion intégré depuis les paramètres société
+
+#### Émission des factures clients
+- Bouton **« Transmettre via PDP »** disponible sur chaque facture finalisée
+- Workflow : génération Facture-X → validation du fichier → transmission au réseau PDP/PPF
+- Transmission automatique optionnelle à la validation de la facture
+
+#### Suivi du cycle de vie
+- Suivi temps réel du statut PDP : **Déposée → Qualifiée → Mise à disposition → Acceptée / Refusée / Litige / Payée**
+- Mise à jour automatique via webhooks entrants (signature HMAC vérifiée)
+- Timeline des événements visible directement depuis la fiche facture
+
+#### Réception des factures fournisseurs
+- **Boîte de réception** dédiée aux factures reçues via le réseau PDP
+- Actions disponibles : Visualiser le Facture-X, Importer en facture fournisseur brouillon, Accepter, Refuser
+- Badge de notification dans la barre latérale pour les factures en attente de traitement
+
+#### E-reporting
+- Tableau de bord des périodes d'e-reporting (transactions B2C et B2B international)
+- Transmission périodique des données au PPF
+- Suivi des statuts par période (En attente / Transmis / Erreur)
+
+#### Enregistrement entreprise auprès du PA
+- Workflow guidé en 4 étapes (stepper modal) depuis les paramètres société
+- Pré-remplissage automatique depuis les données légales de la société (SIREN, SIRET, TVA)
+- Statut d'enregistrement visible (Enregistrée ✓ / Non enregistrée ✗)
+
+<!-- SCREENSHOT : Transmission Facture-X -->
+<!-- SCREENSHOT : Boîte de réception PDP -->
 
 ---
 
-### CRM — Gestion de la relation client
+### Comptabilité
 
-- **Partenaires** : fiche entreprise, coordonnées, contacts liés
-- **Contacts** : personnes physiques rattachées aux partenaires
-- **Appareils / Équipements** : suivi du parc matériel client
-- **Opportunités** : pipeline commercial avec étapes personnalisables
-- **Activités** : suivi des actions commerciales (appels, e-mails, RDV)
+ZELMO embarque un moteur comptable complet couvrant l'ensemble du cycle de gestion financière d'une PME.
 
-<!-- SCREENSHOT : Pipeline CRM -->
+#### Plan comptable & journaux
+- **Plan comptable** personnalisable (PCG français pré-chargé)
+- **Journaux** : achats, ventes, banque, OD, à-nouveaux — configurables par type et par banque
+
+#### Saisie comptable
+- **Écritures manuelles** : saisie libre multi-lignes avec contrôle d'équilibre débit/crédit
+- Génération automatique des **lignes TVA** à la saisie
+- Validation / dé-validation des écritures avec contrôle de période
+- Numérotation automatique paramétrable par journal et par exercice
+
+#### Lettrage
+- Lettrage manuel et automatique des comptes de tiers (clients, fournisseurs)
+- Dé-lettrage avec recalcul instantané
+- Indicateur visuel par écriture (colonnes lettrage/pointage)
+
+#### Rapprochement bancaire
+- Rapprochements par compte bancaire avec gestion des périodes
+- Pointage ligne à ligne, calcul de l'écart en temps réel
+- Solde initial / solde final / écart affiché en couleur (vert = équilibré)
+- Historique de tous les rapprochements précédents
+- Validation automatique à la sélection de la dernière ligne équilibrante
+
+#### Déclarations de TVA
+- Calcul automatique de la TVA collectée / déductible par période
+- Export au format télédéclaration
+
+#### Clôtures & exercices
+- Clôtures de période avec protection des écritures
+- Gestion multi-exercices
+
+#### Import / Export comptable
+- Import d'écritures depuis fichiers externes
+- Export au format comptable standard (intégration logiciels tiers)
+- Sauvegarde et restauration des données comptables
+
+#### Rapports comptables
+- **Grand livre** : détail de tous les mouvements par compte
+- **Balance générale** : soldes débit/crédit par compte
+- **Journaux comptables** : synthèse par journal et par période
+- **Balance des tiers** : suivi des comptes clients et fournisseurs
+- **Centralisation** : tableau récapitulatif par classe de comptes
+- Export PDF et CSV pour chaque rapport
+
+#### OCR factures
+- Extraction automatique des données de factures fournisseurs via **Veryfi**
+- Pré-remplissage des champs à partir d'une photo ou d'un PDF
+
+<!-- SCREENSHOT : Journal comptable -->
+<!-- SCREENSHOT : Rapprochement bancaire -->
+<!-- SCREENSHOT : Grand livre -->
 
 ---
 
 ### Ventes
 
-- **Bons de commande** : création, validation, conversion en facture
-- **Factures** : facturation libre ou depuis commande, PDF, suivi des paiements
-- **Contrats** : gestion des contrats récurrents avec génération automatique de factures
-- **Paiements** : encaissements, affectation sur factures, multi-modes de paiement
+- **Devis** : création, envoi par e-mail, conversion en commande
+- **Bons de commande client** : validation, suivi, génération de facture
+- **Factures client** : facturation libre ou depuis commande, PDF généré côté serveur
+- **Avoirs** : émission d'avoirs liés ou libres
+- **Contrats** : contrats récurrents avec génération automatique de factures à échéance
+- **Paiements** : encaissements, affectation multi-factures, solde restant dû en temps réel
+- **Modes de paiement** : virement, chèque, espèces, CB, prélèvement, etc.
+- **Bons de livraison** : expéditions liées aux commandes client
+- Envoi de documents par e-mail directement depuis l'application
 
 <!-- SCREENSHOT : Liste des factures -->
 <!-- SCREENSHOT : Facture détail + PDF -->
@@ -62,39 +159,39 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 
 ### Achats
 
-- **Bons de commande fournisseur** : création, validation, réception
+- **Devis fournisseur** : réception et comparaison d'offres
+- **Bons de commande fournisseur** : création, validation, suivi
+- **Réceptions** : réception partielle ou totale, création des écritures comptables
+- **Factures fournisseur** : saisie manuelle ou depuis réception
+- **Avoirs fournisseur** : traitement des retours et corrections
+- **Paiements fournisseur** : règlements avec affectation sur factures
 - Workflow d'approbation paramétrable
 
 <!-- SCREENSHOT : Commandes achats -->
 
 ---
 
-### Comptabilité
+### CRM — Gestion de la relation client
 
-- **Plan comptable** : configuration du plan de comptes
-- **Journal** : saisie comptable manuelle et automatique
-- **Écritures comptables** : consultation, lettrage, rapprochement
-- **Lettrage** : association des écritures débitrices/créditrices
-- **Virements** : transferts entre comptes
-- **Rapprochement bancaire** : import relevé vs écritures
-- **Déclarations de TVA** : calcul et export
-- **Clôtures comptables** : arrêté de période
-- **Import / Export** : échanges avec d'autres outils comptables
-- **Sauvegardes** : sauvegarde et restauration des données comptables
-- **OCR factures** : extraction automatique des données via Veryfi
+- **Partenaires** : fiche entreprise complète (coordonnées, informations légales, SIREN/SIRET/TVA, coordonnées bancaires)
+- **Contacts** : personnes physiques rattachées aux partenaires, rôles et responsabilités
+- **Appareils / Équipements** : suivi du parc matériel client avec historique d'interventions
+- **Opportunités** : pipeline commercial avec étapes personnalisables, montant et probabilité
+- **Activités** : suivi des actions commerciales (appels, e-mails, RDV, tâches)
+- Liaison CRM ↔ Ventes : conversion opportunité → devis → commande
 
-<!-- SCREENSHOT : Journal comptable -->
-<!-- SCREENSHOT : Rapprochement bancaire -->
+<!-- SCREENSHOT : Pipeline CRM -->
 
 ---
 
 ### Stocks
 
-- **Produits** : catalogue, prix, références
-- **Mouvements de stock** : entrées, sorties, ajustements
-- **Inventaires** : comptage et valorisation
-- **Bons de livraison** : expéditions clients, réceptions fournisseurs
-- **Entrepôts** : gestion multi-sites
+- **Produits** : catalogue complet avec prix d'achat/vente, références, catégories
+- **Variantes** : déclinaisons par attribut (taille, couleur, etc.)
+- **Mouvements de stock** : entrées, sorties, ajustements manuels, traçabilité complète
+- **Inventaires** : comptage physique, écarts et valorisation
+- **Bons de livraison** : expéditions clients et réceptions fournisseurs
+- **Entrepôts** : gestion multi-sites, affectation par entrepôt
 
 <!-- SCREENSHOT : Gestion des stocks -->
 
@@ -102,9 +199,10 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 
 ### RH & Notes de frais
 
-- **Notes de frais** : création, soumission, validation
-- **Kilométrage** : suivi des déplacements avec barème
-- Workflow de validation multi-niveaux
+- **Notes de frais** : création avec justificatifs, catégorisation par type de dépense
+- **Kilométrage** : suivi des déplacements avec barème officiel applicable
+- **Workflow de validation** : soumission → validation manager → comptabilisation
+- Export et reporting par collaborateur et par période
 
 <!-- SCREENSHOT : Notes de frais -->
 
@@ -112,10 +210,11 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 
 ### Suivi du temps
 
-- **Saisie quotidienne / hebdomadaire** : vue calendrier et tableau
-- **Projets** : organisation du temps par projet et tâche
+- **Saisie quotidienne et hebdomadaire** : vue calendrier et tableau de bord
+- **Projets & tâches** : organisation du temps par projet, tâche et client
 - **Approbations** : validation des temps par les responsables
-- **Rapports** : export et synthèse par période, projet, collaborateur
+- **Rapports** : export et synthèse par période, projet ou collaborateur
+- Facturation du temps passé depuis les projets
 
 <!-- SCREENSHOT : Feuille de temps hebdomadaire -->
 
@@ -123,24 +222,39 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 
 ### Assistance & Ticketing
 
-- **Tickets** : création, assignation, suivi de statut
-- **Articles** : base de connaissance et modèles de réponse
-- **Catégories** : organisation des tickets par domaine
-- Liaison entre tickets (fusion, doublon, dépendance)
+- **Tickets** : création, assignation à un agent, suivi de statut (Ouvert / En cours / Résolu / Fermé)
+- **Base de connaissance** : articles de support et modèles de réponse réutilisables
+- **Catégories** : organisation des tickets par domaine fonctionnel ou produit
+- Liaisons inter-tickets (fusion, doublon, dépendance)
+- Historique complet des échanges par ticket
 
 <!-- SCREENSHOT : Liste des tickets -->
 
 ---
 
+### Tableau de bord
+
+- Vue consolidée de l'activité : ventes du jour/mois, factures en attente, tickets ouverts
+- Graphiques : CA mensuel, évolution des paiements, répartition par catégorie
+- Indicateurs clés personnalisables
+- Accès rapide aux dernières actions et documents récents
+
+<!-- SCREENSHOT : Dashboard avec graphiques -->
+
+---
+
 ### Paramètres & Administration
 
-- **Utilisateurs** : création, rôles, permissions granulaires (Spatie)
-- **Taxes** : configuration des taux de TVA
-- **Modes de paiement** : espèces, virement, chèque, CB, etc.
-- **Modèles d'e-mail** : templates avec variables dynamiques
-- **Séquences** : numérotation automatique des documents
-- **Configuration entreprise** : informations légales, logo, coordonnées
-- **Entrepôts** : gestion des sites logistiques
+- **Utilisateurs** : création de comptes, attribution de rôles, permissions granulaires (RBAC via Spatie)
+- **Taxes** : configuration des taux de TVA (taux standard, réduit, exonéré, etc.)
+- **Modes de paiement** : configuration des méthodes acceptées
+- **Modèles d'e-mail** : templates HTML avec variables dynamiques par type de document
+- **Séquences** : numérotation automatique configurable par type de document et exercice
+- **Entreprise** : informations légales, logo, coordonnées, IBAN, mentions obligatoires
+- **Coordonnées bancaires** : comptes bancaires liés à la société (IBAN, BIC, banque)
+- **Facturation électronique** : configuration du PA/PDP, token d'authentification, webhook, enregistrement de l'entreprise
+- **Entrepôts** : configuration des sites logistiques
+- **Multi-tenant** : une installation pour plusieurs sociétés / bases de données distinctes
 
 ---
 
@@ -163,6 +277,7 @@ Vous souhaitez tester l'application en live ? Rendez-vous sur **[demo.zelmo.fr](
 | Base de données | MariaDB | 11.4+ / MySQL 8.0+ |
 | Email | PHPMailer + IMAP | — |
 | PDF serveur | TCPDF | 6 |
+| Facture-X / XML CII | horstoeko/zugferd | 1.x |
 | OCR factures | Veryfi SDK | — |
 
 ---
@@ -311,12 +426,13 @@ Après installation, connectez-vous avec le compte administrateur par défaut :
 
 **Étapes recommandées :**
 
-1. **Paramètres → Entreprise** : renseigner les informations légales et le logo
+1. **Paramètres → Entreprise** : renseigner les informations légales, le logo et les coordonnées bancaires
 2. **Paramètres → Utilisateurs** : créer les comptes collaborateurs et affecter les rôles
 3. **Paramètres → Taxes** : vérifier les taux de TVA
 4. **Paramètres → Modes de paiement** : configurer les modes utilisés
-5. **CRM → Partenaires** : importer ou créer les premiers clients/fournisseurs
-6. **Comptabilité → Plan comptable** : adapter le plan de comptes si nécessaire
+5. **Paramètres → Facturation Électronique** : configurer le PA/PDP et enregistrer l'entreprise
+6. **CRM → Partenaires** : importer ou créer les premiers clients/fournisseurs
+7. **Comptabilité → Plan comptable** : adapter le plan de comptes si nécessaire
 
 ---
 
@@ -327,16 +443,15 @@ zelmo/
 ├── backend/                    # API Laravel 12
 │   ├── app/
 │   │   ├── Http/Controllers/   # 60+ contrôleurs API
-│   │   ├── Models/             # 96 modèles Eloquent
+│   │   ├── Models/             # Modèles Eloquent
 │   │   ├── Services/           # Logique métier
+│   │   │   ├── EInvoicing/     # Facturation électronique (Facture-X, PDP)
+│   │   │   └── Pdf/            # Génération PDF (TCPDF)
 │   │   ├── Traits/             # Comportements partagés (ex: HasGridFilters)
 │   │   └── Policies/           # Autorisation par ressource
 │   ├── config/
 │   │   ├── tenants.example.php # Modèle de configuration (à copier)
 │   │   └── tenants.php         # Configuration active (exclu du git ⚠️)
-│   ├── database/
-│   │   ├── migrations/         # Migrations Laravel
-│   │   └── seeders/            # Seeders
 │   └── routes/
 │       ├── api.php             # Routes API principales
 │       ├── apiExpense.php      # Routes notes de frais
@@ -344,7 +459,7 @@ zelmo/
 │
 ├── frontend/                   # Application React 19
 │   ├── src/
-│   │   ├── pages/              # Pages (accounting, crm, sales, hr, …)
+│   │   ├── pages/              # Pages (accounting, crm, sales, hr, e-invoicing…)
 │   │   ├── components/         # Composants réutilisables
 │   │   ├── services/           # Clients API (axios)
 │   │   ├── hooks/              # Hooks personnalisés
@@ -353,10 +468,10 @@ zelmo/
 │   └── .env.example            # Variables d'environnement (modèle)
 │
 ├── database/                   # Scripts SQL
-│   ├── schema.sql              # Schéma complet (92 tables)
+│   ├── schema.sql              # Schéma complet
 │   ├── initialize_db.sql       # Données de référence initiales
 │   ├── demo-data.sql           # Données de démonstration
-│   └── generate_initialize_db.sh  # Script de génération de initialize_db.sql
+│   └── generate_initialize_db.sh
 │
 ├── docs/                       # Documentation technique
 │   └── MULTI-TENANT-CONFIG.md  # Guide multi-tenant
@@ -426,7 +541,11 @@ npm run build
 
 ## Licence
 
-Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus d'informations.
+Ce projet est distribué sous licence **GNU AGPL v3**. Voir le fichier [LICENSE](LICENSE) pour plus d'informations.
+
+- Usage et installation libres pour tous
+- Toute modification ou fork doit rester open source sous la même licence
+- Tout fork ou usage commercial doit citer l'original et nous contacter : contact@skuria.fr
 
 ---
 

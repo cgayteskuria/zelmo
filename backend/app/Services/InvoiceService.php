@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InvoiceModel;
 use App\Models\AccountModel;
+use App\Models\EInvoicingTransmissionModel;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceService
@@ -113,6 +114,14 @@ class InvoiceService
     {
         try {
             DB::beginTransaction();
+
+            // Bloquer la modification si la facture a été transmise au PDP
+            $hasActivePdpTransmission = EInvoicingTransmissionModel::where('fk_inv_id', $invoice->inv_id)
+                ->where('eit_status', '!=', EInvoicingTransmissionModel::STATUS_ERROR)
+                ->exists();
+            if ($hasActivePdpTransmission) {
+                throw new \RuntimeException('Cette facture a été transmise au réseau PDP et ne peut plus être modifiée.');
+            }
 
             // Validation de la période comptable si inv_date est modifiée
             if (isset($data['inv_date']) && $data['inv_date'] != $invoice->inv_date) {

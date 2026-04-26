@@ -50,7 +50,7 @@ class AccountBalancePDFEntity extends \TCPDF
         // Marges (gauche, haut, droite)
         $this->SetMargins(10, 25, 10);
         $this->SetAutoPageBreak(true, 25);
-        $this->SetFont('helvetica', '', 9);
+        $this->SetFont('dejavusans', '', 9);
 
         // Générer le PDF
         $this->generate();
@@ -74,7 +74,7 @@ class AccountBalancePDFEntity extends \TCPDF
     public function Header()
     {
         $this->Ln(5);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->MultiCell(63, 0, "Dossier : " . $this->companyName, '', 'L', false, 0);
         $this->MultiCell(64, 0, "BALANCE COMPTABLE", '', 'C', false, 0);
         $this->MultiCell(63, 0, "Le " . date('d/m/Y'), '', 'R', false, 1);
@@ -88,7 +88,7 @@ class AccountBalancePDFEntity extends \TCPDF
             $periodText = 'Période du ' . $startDate . ' au ' . $endDate;
             $this->MultiCell(0, 0, $periodText, '', 'L', false, 1);
 
-            $this->SetFont('helvetica', '', 10);
+            $this->SetFont('dejavusans', '', 10);
             $filterText = '';
 
             if (!empty($this->filters['journal_name'])) {
@@ -107,7 +107,7 @@ class AccountBalancePDFEntity extends \TCPDF
         }
 
         // En-têtes des colonnes
-        $this->SetFont('helvetica', 'B', 9);
+        $this->SetFont('dejavusans', 'B', 9);
         $this->SetFillColor(200, 200, 200);
         $this->Cell(25, 8, 'N° Compte', 1, 0, 'C', true);
         $this->Cell(60, 8, 'Intitulé du compte', 1, 0, 'C', true);
@@ -115,7 +115,7 @@ class AccountBalancePDFEntity extends \TCPDF
         $this->Cell(25, 8, 'Cumul Crédit', 1, 0, 'C', true);
         $this->Cell(25, 8, 'Solde Débiteur', 1, 0, 'C', true);
         $this->Cell(25, 8, 'Solde Créditeur', 1, 1, 'C', true);
-        $this->SetFont('helvetica', '', 9);
+        $this->SetFont('dejavusans', '', 9);
         $this->headerHeight = $this->getPage() == 1 ? $this->GetY() : $this->GetY() - 5;
     }
 
@@ -143,10 +143,10 @@ class AccountBalancePDFEntity extends \TCPDF
 
         foreach ($this->balanceData as $classCode => $accounts) {
             // Titre de la classe
-            $this->SetFont('helvetica', 'B', 10);
+            $this->SetFont('dejavusans', 'B', 10);
             $this->SetFillColor(220, 220, 220);
             $this->Cell(185, 8, 'CLASSE ' . $classCode, 1, 1, 'L', true);
-            $this->SetFont('helvetica', '', 8);
+            $this->SetFont('dejavusans', '', 8);
 
             // Comptes de la classe
             foreach ($accounts as $account) {
@@ -159,20 +159,20 @@ class AccountBalancePDFEntity extends \TCPDF
             }
 
             // Sous-total de la classe
-            $this->SetFont('helvetica', 'B', 8);
+            $this->SetFont('dejavusans', 'B', 8);
             $this->SetFillColor(240, 240, 240);
             $this->Cell(85, 5, 'Sous-total Classe ' . $classCode, 1, 0, 'R', true);
             $this->Cell(25, 5, $this->classSubtotals[$classCode]['debit'] > 0 ? number_format($this->classSubtotals[$classCode]['debit'], 2, ',', ' ') : "", 1, 0, 'R', true);
             $this->Cell(25, 5, $this->classSubtotals[$classCode]['credit'] > 0 ? number_format($this->classSubtotals[$classCode]['credit'], 2, ',', ' ') : "", 1, 0, 'R', true);
             $this->Cell(25, 5, $this->classSubtotals[$classCode]['solde_debit'] > 0 ? number_format($this->classSubtotals[$classCode]['solde_debit'], 2, ',', ' ') : "", 1, 0, 'R', true);
             $this->Cell(25, 5, $this->classSubtotals[$classCode]['solde_credit'] > 0 ? number_format($this->classSubtotals[$classCode]['solde_credit'], 2, ',', ' ') : "", 1, 1, 'R', true);
-            $this->SetFont('helvetica', '', 8);
+            $this->SetFont('dejavusans', '', 8);
             $this->Ln(3);
         }
 
         // Total général
         $this->Ln(5);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->SetFillColor(180, 180, 180);
         $this->Cell(85, 8, 'TOTAL GÉNÉRAL', 1, 0, 'R', true);
         $this->Cell(25, 8, $this->grandTotal['debit'] > 0 ? number_format($this->grandTotal['debit'], 2, ',', ' ') : "", 1, 0, 'R', true);
@@ -187,7 +187,7 @@ class AccountBalancePDFEntity extends \TCPDF
     public function Footer()
     {
         $this->SetY(-15);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $this->Cell(0, 10, 'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, 0, 'C');
     }
 }

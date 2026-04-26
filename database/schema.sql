@@ -14,6 +14,11 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+
+-- Listage de la structure de la base pour fr_skuria_sksuite-skuria
+CREATE DATABASE IF NOT EXISTS `fr_skuria_sksuite-skuria` /*!40100 DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci */;
+USE `fr_skuria_sksuite-skuria`;
+
 -- Listage de la structure de table fr_skuria_sksuite-skuria. account_account_acc
 CREATE TABLE IF NOT EXISTS `account_account_acc` (
   `acc_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -242,7 +247,7 @@ CREATE TABLE IF NOT EXISTS `account_import_export_aie` (
   KEY `FK_account_transfer_aie_user_usr_updater` (`fk_usr_id_updater`) USING BTREE,
   CONSTRAINT `FK_account_transfer_aie_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_account_transfer_aie_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=232 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=237 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -302,7 +307,7 @@ CREATE TABLE IF NOT EXISTS `account_move_amo` (
   CONSTRAINT `FK_account_move_amo_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_account_move_amo_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_amo_parent` FOREIGN KEY (`fk_amo_id_parent`) REFERENCES `account_move_amo` (`amo_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=8278 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8280 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -348,7 +353,7 @@ CREATE TABLE IF NOT EXISTS `account_move_line_aml` (
   CONSTRAINT `FK_account_move_line_aml_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_account_move_line_aml_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_aml_tax` FOREIGN KEY (`fk_tax_id`) REFERENCES `account_tax_tax` (`tax_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=44344 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=44398 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -370,7 +375,7 @@ CREATE TABLE IF NOT EXISTS `account_move_line_tag_rel_amr` (
   CONSTRAINT `FK_amr_aml` FOREIGN KEY (`fk_aml_id`) REFERENCES `account_move_line_aml` (`aml_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `FK_amr_trl` FOREIGN KEY (`fk_trl_id`) REFERENCES `account_tax_repartition_line_trl` (`trl_id`) ON DELETE SET NULL,
   CONSTRAINT `FK_amr_ttg` FOREIGN KEY (`fk_ttg_id`) REFERENCES `account_tax_tag_ttg` (`ttg_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=283 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=307 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -733,6 +738,7 @@ CREATE TABLE IF NOT EXISTS `company_cop` (
   `cop_address` varchar(500) NOT NULL,
   `cop_zip` varchar(10) NOT NULL,
   `cop_city` varchar(45) NOT NULL,
+  `cop_country_code` varchar(2) NOT NULL DEFAULT 'FR',
   `cop_phone` varchar(20) DEFAULT NULL,
   `cop_url_site` varchar(255) DEFAULT NULL,
   `cop_registration_code` varchar(50) DEFAULT NULL,
@@ -754,6 +760,7 @@ CREATE TABLE IF NOT EXISTS `company_cop` (
   `cop_veryfi_client_secret` varchar(255) DEFAULT NULL,
   `cop_veryfi_username` varchar(255) DEFAULT NULL,
   `cop_veryfi_api_key` varchar(255) DEFAULT NULL,
+  `cop_siret` varchar(14) DEFAULT NULL COMMENT 'Numéro SIRET de l''entreprise (14 chiffres)',
   PRIMARY KEY (`cop_id`) USING BTREE,
   KEY `FK_company_cop_user_usr_author` (`fk_usr_id_author`),
   KEY `FK_company_cop_usr_updater` (`fk_usr_id_updater`),
@@ -972,7 +979,7 @@ CREATE TABLE IF NOT EXISTS `contract_line_col` (
   `fk_con_id` int(11) DEFAULT NULL,
   `col_prtlib` varchar(150) NOT NULL DEFAULT '',
   `col_prtdesc` mediumtext DEFAULT NULL,
-  `col_prttype` int(11) DEFAULT 0,
+  `col_prttype` enum('conso','service') DEFAULT NULL,
   `col_note` varchar(100) DEFAULT NULL,
   `col_qty` decimal(12,2) DEFAULT NULL,
   `col_priceunitht` decimal(12,3) DEFAULT NULL,
@@ -997,6 +1004,17 @@ CREATE TABLE IF NOT EXISTS `contract_line_col` (
   CONSTRAINT `FK_contract_line_col_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_contract_line_col_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=709 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- Les données exportées n'étaient pas sélectionnées.
+
+-- Listage de la structure de table fr_skuria_sksuite-skuria. country_cty
+CREATE TABLE IF NOT EXISTS `country_cty` (
+  `cty_code` char(2) NOT NULL COMMENT 'Code ISO 3166-1 alpha-2',
+  `cty_name` varchar(100) NOT NULL COMMENT 'Nom du pays en français',
+  `cty_is_eu` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 si membre de l''UE',
+  PRIMARY KEY (`cty_code`),
+  KEY `idx_cty_name` (`cty_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Référentiel des pays ISO 3166-1 alpha-2';
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1094,7 +1112,7 @@ CREATE TABLE IF NOT EXISTS `delivery_note_line_dnl` (
   `fk_prt_id` int(11) DEFAULT NULL COMMENT 'ID du produit',
   `dnl_prtlib` varchar(255) DEFAULT NULL COMMENT 'Libellé du produit',
   `dnl_prtdesc` text DEFAULT NULL COMMENT 'Description du produit',
-  `dnl_prttype` tinyint(4) NOT NULL DEFAULT 0,
+  `dnl_prttype` enum('conso','service') DEFAULT NULL,
   `dnl_qty` decimal(15,2) NOT NULL DEFAULT 1.00 COMMENT 'Quantité',
   `dnl_qty_unit` varchar(20) DEFAULT 'pce' COMMENT 'Unité de mesure',
   `dnl_lot_number` varchar(255) DEFAULT NULL COMMENT 'Numéro de lot',
@@ -1217,7 +1235,7 @@ CREATE TABLE IF NOT EXISTS `document_doc` (
   CONSTRAINT `FK_document_doc_user_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_document_doc_vehicle_vhc` FOREIGN KEY (`fk_vhc_id`) REFERENCES `vehicle_vhc` (`vhc_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `document_doc_fk_opp_id_foreign` FOREIGN KEY (`fk_opp_id`) REFERENCES `prospect_opportunity_opp` (`opp_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=913 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=918 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1241,6 +1259,117 @@ CREATE TABLE IF NOT EXISTS `duration_dur` (
   CONSTRAINT `FK_duration_dur_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_duration_dur_user_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- Les données exportées n'étaient pas sélectionnées.
+
+-- Listage de la structure de table fr_skuria_sksuite-skuria. einvoicing_config_eic
+CREATE TABLE IF NOT EXISTS `einvoicing_config_eic` (
+  `eic_id` int(11) NOT NULL AUTO_INCREMENT,
+  `eic_created` timestamp NULL DEFAULT NULL,
+  `eic_updated` timestamp NULL DEFAULT NULL,
+  `fk_usr_id_author` int(11) DEFAULT NULL,
+  `fk_usr_id_updater` int(11) DEFAULT NULL,
+  `eic_pdp_profile` varchar(50) NOT NULL DEFAULT 'custom' COMMENT 'Profil de connexion PA (custom)',
+  `eic_pdp_adapter` varchar(50) NOT NULL DEFAULT 'generic' COMMENT 'Adaptateur PHP résolu par PdpClientFactory',
+  `eic_api_url` varchar(255) DEFAULT NULL COMMENT 'URL de base de l''API PA ',
+  `eic_token_url` varchar(255) DEFAULT NULL COMMENT 'URL du serveur OAuth2 — endpoint /token',
+  `eic_client_id` varchar(255) DEFAULT NULL COMMENT 'API Client ID OAuth2 fourni par le PA',
+  `eic_client_secret` text DEFAULT NULL COMMENT 'API Client Secret OAuth2 fourni par le PA',
+  `eic_customer_id` varchar(100) DEFAULT NULL COMMENT 'Identifiant client (CustomerId)',
+  `eic_oauth_token` text DEFAULT NULL COMMENT 'Cache du Bearer token OAuth2 (géré automatiquement, ne pas modifier)',
+  `eic_oauth_expires_at` timestamp NULL DEFAULT NULL COMMENT 'Date d''expiration du token OAuth2 mis en cache',
+  `eic_webhook_secret` varchar(255) DEFAULT NULL COMMENT 'Secret Webhook — HMAC partagé avec le PA pour valider les callbacks',
+  `eic_business_entity_id` varchar(100) DEFAULT NULL COMMENT 'Identifiant de l''entité enregistrée chez le PA',
+  `eic_entity_registered` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = entreprise enregistrée chez le PA',
+  `eic_auto_transmit` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 = transmission automatique à la validation de la facture',
+  `eic_validate_before_send` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1 = valider le format Facture-X avant envoi',
+  `eic_facturex_profile` varchar(20) NOT NULL DEFAULT 'EN16931' COMMENT 'Profil Facture-X (MINIMUM, BASIC, EN16931, EXTENDED)',
+  PRIMARY KEY (`eic_id`),
+  KEY `FK_einvoicing_config_usr_author` (`fk_usr_id_author`),
+  KEY `FK_einvoicing_config_usr_updater` (`fk_usr_id_updater`),
+  CONSTRAINT `FK_einvoicing_config_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
+  CONSTRAINT `FK_einvoicing_config_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Configuration du PA/PDP pour la facturation électronique';
+
+-- Les données exportées n'étaient pas sélectionnées.
+
+-- Listage de la structure de table fr_skuria_sksuite-skuria. einvoicing_ereporting_eer
+CREATE TABLE IF NOT EXISTS `einvoicing_ereporting_eer` (
+  `eer_id` int(11) NOT NULL AUTO_INCREMENT,
+  `eer_created` timestamp NULL DEFAULT NULL,
+  `eer_updated` timestamp NULL DEFAULT NULL,
+  `fk_usr_id_author` int(11) DEFAULT NULL,
+  `eer_period` varchar(7) NOT NULL COMMENT 'Période au format YYYY-MM',
+  `eer_type` enum('B2C','B2B_INTL') NOT NULL COMMENT 'Type de transaction',
+  `eer_status` varchar(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, TRANSMITTED, ERROR',
+  `eer_pa_declaration_id` varchar(100) DEFAULT NULL COMMENT 'Identifiant de la déclaration chez le PA',
+  `eer_amount_ht` decimal(15,3) DEFAULT NULL COMMENT 'Total HT agrégé sur la période',
+  `eer_amount_ttc` decimal(15,3) DEFAULT NULL COMMENT 'Total TTC agrégé sur la période',
+  `eer_transmitted_at` timestamp NULL DEFAULT NULL,
+  `eer_pa_response` text DEFAULT NULL,
+  `eer_invoice_ids` text DEFAULT NULL COMMENT 'JSON: liste des inv_id inclus dans cet e-reporting',
+  PRIMARY KEY (`eer_id`),
+  UNIQUE KEY `uk_eer_period_type` (`eer_period`,`eer_type`),
+  KEY `FK_einvoicing_ereporting_usr` (`fk_usr_id_author`),
+  CONSTRAINT `FK_einvoicing_ereporting_usr` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Données d''e-reporting à transmettre au PA';
+
+-- Les données exportées n'étaient pas sélectionnées.
+
+-- Listage de la structure de table fr_skuria_sksuite-skuria. einvoicing_received_eir
+CREATE TABLE IF NOT EXISTS `einvoicing_received_eir` (
+  `eir_id` int(11) NOT NULL AUTO_INCREMENT,
+  `eir_created` timestamp NULL DEFAULT NULL,
+  `eir_updated` timestamp NULL DEFAULT NULL,
+  `eir_pa_invoice_id` varchar(100) NOT NULL COMMENT 'ID unique de la facture chez le PA',
+  `eir_our_status` varchar(50) NOT NULL DEFAULT 'PENDING' COMMENT 'Statut que nous déclarons: PENDING, ACCEPTEE, REFUSEE, EN_PAIEMENT, PAYEE',
+  `eir_pa_status` varchar(50) DEFAULT NULL COMMENT 'Statut reçu du PA',
+  `eir_sender_siren` varchar(14) DEFAULT NULL,
+  `eir_sender_siret` varchar(14) DEFAULT NULL,
+  `eir_sender_name` varchar(255) DEFAULT NULL,
+  `eir_sender_vat_number` varchar(20) DEFAULT NULL,
+  `eir_invoice_number` varchar(50) DEFAULT NULL,
+  `eir_invoice_date` date DEFAULT NULL,
+  `eir_due_date` date DEFAULT NULL,
+  `eir_amount_ht` decimal(12,3) DEFAULT NULL,
+  `eir_amount_ttc` decimal(12,3) DEFAULT NULL,
+  `eir_currency` char(3) DEFAULT 'EUR',
+  `eir_facturex_path` varchar(500) DEFAULT NULL COMMENT 'Chemin relatif du fichier Facture-X reçu et stocké',
+  `eir_raw_payload` mediumtext DEFAULT NULL COMMENT 'Payload JSON complet du webhook',
+  `eir_imported_at` timestamp NULL DEFAULT NULL COMMENT 'Date d''import comme facture fournisseur (NULL si non importé)',
+  `fk_inv_id` int(11) DEFAULT NULL COMMENT 'Lien vers la facture fournisseur créée après import',
+  PRIMARY KEY (`eir_id`),
+  UNIQUE KEY `uk_eir_pa_invoice_id` (`eir_pa_invoice_id`),
+  KEY `FK_einvoicing_received_inv` (`fk_inv_id`),
+  KEY `idx_eir_status` (`eir_our_status`),
+  CONSTRAINT `FK_einvoicing_received_inv` FOREIGN KEY (`fk_inv_id`) REFERENCES `invoice_inv` (`inv_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Factures électroniques reçues via le PA/PDP';
+
+-- Les données exportées n'étaient pas sélectionnées.
+
+-- Listage de la structure de table fr_skuria_sksuite-skuria. einvoicing_transmission_eit
+CREATE TABLE IF NOT EXISTS `einvoicing_transmission_eit` (
+  `eit_id` int(11) NOT NULL AUTO_INCREMENT,
+  `eit_created` timestamp NULL DEFAULT NULL,
+  `eit_updated` timestamp NULL DEFAULT NULL,
+  `fk_usr_id_author` int(11) DEFAULT NULL,
+  `fk_inv_id` int(11) NOT NULL,
+  `eit_pa_file_id` varchar(100) DEFAULT NULL COMMENT 'ID fichier retourné par le PA après génération Facture-X',
+  `eit_pa_invoice_id` varchar(100) DEFAULT NULL COMMENT 'ID facture retourné par le PA après envoi PDP',
+  `eit_status` varchar(50) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, DEPOSEE, QUALIFIEE, MISE_A_DISPO, ACCEPTEE, REFUSEE, EN_PAIEMENT, PAYEE, LITIGE, ERROR',
+  `eit_transmitted_at` timestamp NULL DEFAULT NULL,
+  `eit_last_event_at` timestamp NULL DEFAULT NULL,
+  `eit_facturex_path` varchar(500) DEFAULT NULL COMMENT 'Chemin relatif du fichier Facture-X stocké',
+  `eit_error_message` text DEFAULT NULL,
+  `eit_pa_response` text DEFAULT NULL COMMENT 'Dernière réponse JSON brute du PA',
+  PRIMARY KEY (`eit_id`),
+  KEY `FK_einvoicing_transmission_inv` (`fk_inv_id`),
+  KEY `FK_einvoicing_transmission_usr` (`fk_usr_id_author`),
+  KEY `idx_eit_status` (`eit_status`),
+  KEY `idx_eit_pa_invoice_id` (`eit_pa_invoice_id`),
+  CONSTRAINT `FK_einvoicing_transmission_inv` FOREIGN KEY (`fk_inv_id`) REFERENCES `invoice_inv` (`inv_id`) ON DELETE CASCADE,
+  CONSTRAINT `FK_einvoicing_transmission_usr` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Journal des factures transmises au PA/PDP';
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1473,7 +1602,7 @@ CREATE TABLE IF NOT EXISTS `invoice_line_inl` (
   `fk_inv_id` int(11) DEFAULT NULL,
   `inl_prtlib` varchar(150) NOT NULL DEFAULT '',
   `inl_prtdesc` mediumtext DEFAULT NULL,
-  `inl_prttype` int(11) DEFAULT NULL,
+  `inl_prttype` enum('conso','service') DEFAULT NULL,
   `inl_is_subscription` tinyint(4) NOT NULL DEFAULT 0,
   `inl_note` varchar(100) DEFAULT NULL,
   `inl_qty` decimal(12,2) DEFAULT NULL,
@@ -1564,7 +1693,7 @@ CREATE TABLE IF NOT EXISTS `logs_log` (
   CONSTRAINT `FK_logs_log_user_usr` FOREIGN KEY (`fk_usr_id`) REFERENCES `user_usr` (`usr_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `FK_logs_log_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `FK_logs_log_user_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1593,7 +1722,7 @@ CREATE TABLE IF NOT EXISTS `menu_mnu` (
   CONSTRAINT `FK_menu_mnu_user_usr_author` FOREIGN KEY (`fk_usr_id_author`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `FK_menu_mnu_user_usr_updater` FOREIGN KEY (`fk_usr_id_updater`) REFERENCES `user_usr` (`usr_id`),
   CONSTRAINT `fk_menu_app` FOREIGN KEY (`fk_app_id`) REFERENCES `application_app` (`app_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=205 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=209 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1810,6 +1939,8 @@ CREATE TABLE IF NOT EXISTS `partner_ptr` (
   `ptr_activity` varchar(255) DEFAULT NULL,
   `ptr_customer_delivery_address` text DEFAULT NULL,
   `ptr_supplier_delivery_address` text DEFAULT NULL,
+  `ptr_siret` varchar(14) DEFAULT NULL COMMENT 'Numéro SIRET (14 chiffres) — SIREN + NIC',
+  `ptr_country_code` char(2) DEFAULT NULL COMMENT 'Code pays ISO 3166-1 alpha-2 (ex: FR) pour le XML Facture-X',
   PRIMARY KEY (`ptr_id`) USING BTREE,
   UNIQUE KEY `clt_lib` (`ptr_name`) USING BTREE,
   UNIQUE KEY `ptr_account_auxiliary_supplier` (`ptr_account_auxiliary_supplier`),
@@ -1866,7 +1997,7 @@ CREATE TABLE IF NOT EXISTS `payment_allocation_pal` (
   CONSTRAINT `fk_payment_allocation_inv` FOREIGN KEY (`fk_inv_id`) REFERENCES `invoice_inv` (`inv_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_payment_allocation_pay` FOREIGN KEY (`fk_pay_id`) REFERENCES `payment_pay` (`pay_id`),
   CONSTRAINT `payment_allocation_pal_fk_exr_id_foreign` FOREIGN KEY (`fk_exr_id`) REFERENCES `expense_reports_exr` (`exr_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=363 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Table d allocation des règlements aux factures (permet règlements multi-factures)';
+) ENGINE=InnoDB AUTO_INCREMENT=364 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='Table d allocation des règlements aux factures (permet règlements multi-factures)';
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1933,7 +2064,7 @@ CREATE TABLE IF NOT EXISTS `payment_pay` (
   CONSTRAINT `FK_payment_pay_partner_ptr` FOREIGN KEY (`fk_ptr_id`) REFERENCES `partner_ptr` (`ptr_id`),
   CONSTRAINT `FK_payment_pay_user_usr` FOREIGN KEY (`fk_usr_id`) REFERENCES `user_usr` (`usr_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
   CONSTRAINT `payment_pay_fk_inv_id_credit_generated_foreign` FOREIGN KEY (`fk_inv_id_credit_generated`) REFERENCES `invoice_inv` (`inv_id`) ON DELETE SET NULL ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=200 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=201 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1946,7 +2077,7 @@ CREATE TABLE IF NOT EXISTS `permissions` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `permissions_name_guard_name_unique` (`name`,`guard_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=206 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=210 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -1966,7 +2097,7 @@ CREATE TABLE IF NOT EXISTS `personal_access_tokens` (
   UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
   KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
   KEY `personal_access_tokens_expires_at_index` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=86 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Les données exportées n'étaient pas sélectionnées.
 
@@ -2252,7 +2383,7 @@ CREATE TABLE IF NOT EXISTS `purchase_order_line_pol` (
   `fk_por_id` int(11) DEFAULT NULL,
   `pol_prtlib` varchar(150) NOT NULL DEFAULT '',
   `pol_prtdesc` mediumtext DEFAULT NULL,
-  `pol_prttype` int(11) DEFAULT 0,
+  `pol_prttype` enum('conso','service') DEFAULT NULL,
   `pol_qty` decimal(12,2) DEFAULT NULL,
   `pol_priceunitht` decimal(12,3) DEFAULT NULL,
   `pol_discount` decimal(12,2) DEFAULT NULL,
@@ -2405,7 +2536,7 @@ CREATE TABLE IF NOT EXISTS `sale_order_line_orl` (
   `fk_ord_id` int(11) DEFAULT NULL,
   `orl_prtlib` varchar(150) NOT NULL DEFAULT '',
   `orl_prtdesc` mediumtext DEFAULT NULL,
-  `orl_prttype` int(11) DEFAULT 0,
+  `orl_prttype` enum('conso','service') DEFAULT NULL,
   `orl_note` varchar(100) DEFAULT NULL,
   `orl_qty` double DEFAULT NULL,
   `orl_priceunitht` double DEFAULT NULL,

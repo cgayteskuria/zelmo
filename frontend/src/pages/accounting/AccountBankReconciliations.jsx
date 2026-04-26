@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Button, Tag } from "antd";
 import { PlusOutlined, EyeOutlined, EditOutlined } from "@ant-design/icons";
-import { formatCurrency,formatDate } from "../../utils/formatters";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import ServerTable from "../../components/table";
 import PageContainer from "../../components/common/PageContainer";
 import { useNavigate } from "react-router-dom";
@@ -115,6 +115,7 @@ export default function AccountBankReconciliations() {
         >
             <ServerTable
                 ref={gridRef}
+                csv={true}
                 columns={columns}
                 fetchFn={accountBankReconciliationsApi.list}
                 onRowClick={handleView}

@@ -22,6 +22,24 @@ class AccountingExportService
         $this->documentService = $documentService;
     }
 
+    // En-têtes CSV (format lisible, séparateur point-virgule)
+    private const CSV_HEADERS = [
+        'Journal',
+        'Libellé journal',
+        'N° écriture',
+        'Date écriture',
+        'N° compte',
+        'Libellé compte',
+        'Réf. pièce',
+        'Date pièce',
+        'Libellé écriture',
+        'Débit',
+        'Crédit',
+        'Lettrage',
+        'Date lettrage',
+        'Date validation',
+    ];
+
     // En-têtes FEC conformes norme DGFiP
     private const FEC_HEADERS = [
         'JournalCode',
@@ -110,6 +128,121 @@ class AccountingExportService
         } catch (Exception $e) {
             throw new Exception("Erreur lors de l'export FEC : " . $e->getMessage());
         }
+    }
+
+    /**
+     * Exporte les écritures comptables au format CSV (point-virgule, dates lisibles)
+     *
+     * @param array $filters Filtres d'export (start_date, end_date, account_from_id, account_to_id, ajl_id)
+     * @param int $userId ID utilisateur auteur
+     * @return array Résultat avec aie_id, filename, size
+     */
+    public function exportCsv(array $filters, int $userId): array
+    {
+        try {
+            $company = CompanyModel::first();
+            if (!$company) {
+                throw new Exception("Aucune société configurée");
+            }
+
+            $siren = str_replace(' ', '', $company->cop_registration_code ?? '');
+            if (empty($siren)) {
+                throw new Exception("SIREN non configuré pour la société");
+            }
+
+            $startFormatted = str_replace('-', '', $filters['start_date']);
+            $endFormatted   = str_replace('-', '', $filters['end_date']);
+            $filename = "{$siren}_EXPORT_{$startFormatted}_{$endFormatted}.csv";
+
+            $query = $this->buildExportQuery($filters);
+            $fileContent = $this->generateCsvContent($query);
+
+            $aie = AccountImportExportModel::create([
+                'aie_sens'            => -1,
+                'aie_type'            => 'CSV',
+                'aie_transfer_start'  => $filters['start_date'],
+                'aie_transfer_end'    => $filters['end_date'],
+                'aie_moves_number'    => $this->countMoves($query),
+                'fk_usr_id_author'    => $userId,
+            ]);
+
+            $document = $this->documentService->storeFileFromContent(
+                $fileContent,
+                $filename,
+                'text/csv',
+                'accounting-exports',
+                $aie->aie_id,
+                $userId,
+                false
+            );
+
+            return [
+                'aie_id'   => $aie->aie_id,
+                'filename' => $filename,
+                'size'     => $document->doc_filesize,
+            ];
+        } catch (Exception $e) {
+            throw new Exception("Erreur lors de l'export CSV : " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Génère le contenu du fichier CSV avec BOM UTF-8 (pour Excel FR)
+     */
+    private function generateCsvContent($query): string
+    {
+        // BOM UTF-8 pour que Excel ouvre correctement en UTF-8
+        $content = "\xEF\xBB\xBF";
+
+        $content .= implode(';', self::CSV_HEADERS) . "\n";
+
+        foreach ($query->cursor() as $line) {
+            $row = [
+                $line->JournalCode,
+                $this->cleanValue($line->JournalLib),
+                $line->EcritureNum,
+                $this->fecDateToHuman($line->EcritureDate),
+                $line->CompteNum,
+                $this->cleanValue($line->CompteLib),
+                $this->cleanValue($line->PieceRef),
+                $this->fecDateToHuman($line->PieceDate),
+                $this->cleanValue($line->EcritureLib),
+                number_format((float) $line->Debit,  2, ',', ''),
+                number_format((float) $line->Credit, 2, ',', ''),
+                $line->EcritureLet,
+                $this->fecDateToHuman($line->DateLet),
+                $this->fecDateToHuman($line->ValidDate),
+            ];
+            // Entourer les champs texte qui pourraient contenir des point-virgules
+            $content .= implode(';', array_map(fn($v) => $this->csvEscape($v), $row)) . "\n";
+        }
+
+        return $content;
+    }
+
+    /**
+     * Convertit une date YYYYMMDD (format FEC) en DD/MM/YYYY, ou retourne vide
+     */
+    private function fecDateToHuman(?string $fecDate): string
+    {
+        if (empty($fecDate) || strlen($fecDate) !== 8) {
+            return '';
+        }
+        return substr($fecDate, 6, 2) . '/' . substr($fecDate, 4, 2) . '/' . substr($fecDate, 0, 4);
+    }
+
+    /**
+     * Échappe une valeur pour CSV (guillemets si contient ; ou ")
+     */
+    private function csvEscape(?string $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        if (str_contains($value, ';') || str_contains($value, '"') || str_contains($value, "\n")) {
+            return '"' . str_replace('"', '""', $value) . '"';
+        }
+        return $value;
     }
 
     /**

@@ -17,6 +17,7 @@ use App\Models\AccountTaxModel;
 use App\Models\AccountConfigModel;
 
 use App\Services\Pdf\DocumentPdfService;
+use App\Services\EInvoicing\FactureXGeneratorService;
 use App\Traits\HasGridFilters;
 
 
@@ -774,7 +775,7 @@ class ApiInvoiceController extends ApiBizDocumentController
     public function printPdf($id): JsonResponse
     {
         try {
-            $invoice = InvoiceModel::findOrFail($id);
+            $invoice = InvoiceModel::with(['partner', 'lines'])->findOrFail($id);
 
             if ($invoice->inv_being_edited) {
                 return response()->json([
@@ -783,27 +784,38 @@ class ApiInvoiceController extends ApiBizDocumentController
                 ], 422);
             }
 
-            $pdfService = new DocumentPdfService();
-            $pdfBase64 = $pdfService->generateInvoicePdf($id);
-
-            // Déterminer le nom du fichier selon le type
             $typeMapping = [
                 InvoiceModel::OPERATION_CUSTOMER_INVOICE => 'Facture',
-                InvoiceModel::OPERATION_CUSTOMER_REFUND => 'Avoir',
+                InvoiceModel::OPERATION_CUSTOMER_REFUND  => 'Avoir',
                 InvoiceModel::OPERATION_SUPPLIER_INVOICE => 'FactureFrs',
-                InvoiceModel::OPERATION_SUPPLIER_REFUND => 'AvoirFrs',
+                InvoiceModel::OPERATION_SUPPLIER_REFUND  => 'AvoirFrs',
                 InvoiceModel::OPERATION_CUSTOMER_DEPOSIT => 'Acompte',
                 InvoiceModel::OPERATION_SUPPLIER_DEPOSIT => 'AcompteFrs',
             ];
+            $prefix   = $typeMapping[$invoice->inv_operation] ?? 'Facture';
+            $fileName = $prefix . '_' . ($invoice->inv_number ?? $id) . '.pdf';
 
-            $prefix = $typeMapping[$invoice->inv_operation] ?? 'Facture';
-            $fileName = $prefix . '_' . $invoice->inv_number . '.pdf';
+            $isCustomerInvoice = in_array($invoice->inv_operation, [
+                InvoiceModel::OPERATION_CUSTOMER_INVOICE,
+                InvoiceModel::OPERATION_CUSTOMER_REFUND,
+            ]);
+            $isFinalized = $invoice->inv_status >= InvoiceModel::STATUS_FINALIZED;
+
+            if ($isCustomerInvoice && $isFinalized) {
+                // Facture-X : PDF/A-3 + XML CII embarqué
+                $factureXService = app(FactureXGeneratorService::class);
+                $pdfBinary       = $factureXService->generateFromInvoice($invoice);
+                $pdfBase64       = base64_encode($pdfBinary);
+            } else {
+                // PDF simple (brouillon, facture fournisseur, acompte…)
+                $pdfBase64 = (new DocumentPdfService())->generateInvoicePdf($id);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'PDF généré avec succès',
                 'data' => [
-                    'pdf' => $pdfBase64,
+                    'pdf'      => $pdfBase64,
                     'fileName' => $fileName,
                 ],
             ]);
@@ -1103,15 +1115,20 @@ class ApiInvoiceController extends ApiBizDocumentController
                 $operations = [InvoiceModel::OPERATION_SUPPLIER_REFUND]; // Factures et acomptes fournisseurs
             }
 
+            // En mode édition (payId fourni), exclure le règlement en cours du total payé
+            // pour que amount_remaining reflète uniquement les autres règlements.
+            $payIdInt   = $payId ? (int) $payId : null;
+            $paidSubSql = $payIdInt
+                ? "(SELECT fk_inv_id, SUM(pal_amount) as total_paid
+                    FROM payment_allocation_pal
+                    WHERE fk_pay_id != {$payIdInt}
+                    GROUP BY fk_inv_id) as paid"
+                : "(SELECT fk_inv_id, SUM(pal_amount) as total_paid
+                    FROM payment_allocation_pal
+                    GROUP BY fk_inv_id) as paid";
+
             $baseQuery = InvoiceModel::from('invoice_inv as inv')
-                ->leftJoin(
-                    DB::raw('(SELECT fk_inv_id, SUM(pal_amount) as total_paid
-                             FROM payment_allocation_pal
-                             GROUP BY fk_inv_id) as paid'),
-                    'inv.inv_id',
-                    '=',
-                    'paid.fk_inv_id'
-                )
+                ->leftJoin(DB::raw($paidSubSql), 'inv.inv_id', '=', 'paid.fk_inv_id')
                 ->where('inv.fk_ptr_id', $ptrId)
                 ->whereIn('inv.inv_operation', $operations)
                 ->whereIn('inv.inv_status', [InvoiceModel::STATUS_FINALIZED, InvoiceModel::STATUS_ACCOUNTED])
@@ -1124,21 +1141,14 @@ class ApiInvoiceController extends ApiBizDocumentController
                     DB::raw('inv.inv_totalttc - COALESCE(paid.total_paid, 0) as amount_remaining')
                 ])
                 ->havingRaw('amount_remaining > 0');
-            //->orderBy('inv.inv_date', 'ASC')
-            // ->get();
 
-            if ($payId) {
+            if ($payIdInt) {
+                // UNION : ajouter les factures allouées au règlement en cours
+                // (elles peuvent avoir amount_remaining = 0 si entièrement couvertes par ce règlement)
                 $allocationQuery = InvoiceModel::from('invoice_inv as inv')
                     ->join('payment_allocation_pal as pal', 'pal.fk_inv_id', '=', 'inv.inv_id')
-                    ->leftJoin(
-                        DB::raw('(SELECT fk_inv_id, SUM(pal_amount) as total_paid
-                     FROM payment_allocation_pal
-                     GROUP BY fk_inv_id) as paid'),
-                        'inv.inv_id',
-                        '=',
-                        'paid.fk_inv_id'
-                    )
-                    ->where('pal.fk_pay_id', $payId)
+                    ->leftJoin(DB::raw($paidSubSql), 'inv.inv_id', '=', 'paid.fk_inv_id')
+                    ->where('pal.fk_pay_id', $payIdInt)
                     ->select([
                         'inv.inv_id as id',
                         'inv.inv_number as number',

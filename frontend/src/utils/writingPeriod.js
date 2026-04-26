@@ -37,15 +37,19 @@ export const createDateValidator = () => {
       return Promise.resolve(); // pas de période définie -> ok
     }
 
+    // Normaliser en YYYY-MM-DD pour éviter les faux positifs si l'API renvoie un datetime complet
+    // ex: "2025-06-01T00:00:00Z" → "2025-06-01" < "2025-06-01T..." serait true par erreur
     const orderDateStr = value.format("YYYY-MM-DD");
-    
-    if (orderDateStr < period.startDate) {
+    const start = dayjs(period.startDate).format("YYYY-MM-DD");
+    const end   = dayjs(period.endDate).format("YYYY-MM-DD");
+
+    if (orderDateStr < start) {
       return Promise.reject(
         new Error(`La date doit être >= ${dayjs(period.startDate).format("DD/MM/YYYY")}`)
       );
     }
-    
-    if (orderDateStr > period.endDate) {
+
+    if (orderDateStr > end) {
       return Promise.reject(
         new Error(`La date doit être <= ${dayjs(period.endDate).format("DD/MM/YYYY")}`)
       );

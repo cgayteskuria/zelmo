@@ -101,6 +101,7 @@ export default function AccountMoves() {
 
             <ServerTable
                 ref={gridRef}
+                csv={true}
                 columns={columns}
                 fetchFn={accountMovesApi.list}
                 onRowClick={handleRowClick}

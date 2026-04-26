@@ -90,6 +90,11 @@ const TimeReports = lazy(() => import("./pages/time/TimeReports"));
 const MyProfile = lazy(() => import("./pages/settings/MyProfile"));
 const Sequences = lazy(() => import("./pages/settings/Sequences"));
 
+// E-Facturation
+const EInvoicingInbox = lazy(() => import("./pages/e-invoicing/EInvoicingInbox"));
+const EReportingDashboard = lazy(() => import("./pages/e-invoicing/EReportingDashboard"));
+const EInvoicingSettings = lazy(() => import("./pages/e-invoicing/EInvoicingSettings"));
+
 // Prospection
 const ProspectDashboard = lazy(() => import("./pages/crm/ProspectDashboard"));
 
@@ -983,6 +988,32 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <AppLayout><MyProfile /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* E-Facturation */}
+                <Route
+                  path="/e-invoicing/inbox"
+                  element={
+                    <ProtectedRoute permission="einvoicing.receive">
+                      <AppLayout><EInvoicingInbox /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/e-invoicing/e-reporting"
+                  element={
+                    <ProtectedRoute permission="einvoicing.view">
+                      <AppLayout><EReportingDashboard /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/e-invoicing/settings"
+                  element={
+                    <ProtectedRoute permission="einvoicing.settings">
+                      <AppLayout><EInvoicingSettings /></AppLayout>
                     </ProtectedRoute>
                   }
                 />

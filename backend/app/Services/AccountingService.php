@@ -31,17 +31,17 @@ class AccountingService
         $start_date = $filters['start_date'] ?? null;
         $end_date   = $filters['end_date'] ?? null;
 
-        if ($start_date && $start_date < $writingPeriod['start_date']->format('Y-m-d')) {
+        if ($start_date && $writingPeriod['startDate'] && $start_date < $writingPeriod['startDate']->format('Y-m-d')) {
             throw new \Exception(
                 "La date de début ({$start_date}) est antérieure au début de la période de saisie (" .
-                    $writingPeriod['start_date']->format('d/m/Y') . ")"
+                    $writingPeriod['startDate']->format('d/m/Y') . ")"
             );
         }
 
-        if ($end_date && $end_date > $writingPeriod['end_date']->format('Y-m-d')) {
+        if ($end_date && $writingPeriod['endDate'] && $end_date > $writingPeriod['endDate']->format('Y-m-d')) {
             throw new \Exception(
                 "La date de fin ({$end_date}) est postérieure à la fin de l'exercice (" .
-                    $writingPeriod['end_date']->format('d/m/Y') . ")"
+                    $writingPeriod['endDate']->format('d/m/Y') . ")"
             );
         }
     }

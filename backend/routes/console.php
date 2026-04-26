@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Alertes TVA — envoi quotidien à 08h00
 Schedule::command('vat:send-alerts')->dailyAt('08:00');
+
+// Facturation électronique — synchronisation des statuts toutes les 15 minutes
+Schedule::job(new \App\Jobs\SyncEInvoicingStatusesJob)->everyFifteenMinutes();

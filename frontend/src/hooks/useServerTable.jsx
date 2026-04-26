@@ -365,6 +365,7 @@ export default function useServerTable({
         resetFilters,
         updateFilters,
         filtersActive,
-        filters
+        filters,
+        sorter,
     };
 }

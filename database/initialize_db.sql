@@ -414,6 +414,11 @@ REPLACE INTO `role_has_permissions` VALUES
 (158,2),
 (159,2);
 
+REPLACE INTO `role_has_permissions` VALUES
+(206,1),
+(207,1),
+(208,1),
+(209,1);
 -- ---------------------------------------------------------
 -- Table : `permissions` (200 ligne(s))
 -- ---------------------------------------------------------
@@ -619,6 +624,11 @@ REPLACE INTO `permissions` VALUES
 (203,'time.projects.edit','sanctum',NULL,NULL),
 (204,'prospect-activities.view_all','sanctum','2026-03-23 18:42:25','2026-03-23 18:42:25'),
 (205,'time.delete','sanctum','2026-03-25 10:27:30','2026-03-25 10:27:30');
+REPLACE INTO `permissions` VALUES
+(206,'einvoicing.view','sanctum','2026-04-22 00:00:00','2026-04-22 00:00:00'),
+(207,'einvoicing.transmit','sanctum','2026-04-22 00:00:00','2026-04-22 00:00:00'),
+(208,'einvoicing.receive','sanctum','2026-04-22 00:00:00','2026-04-22 00:00:00'),
+(209,'einvoicing.settings','sanctum','2026-04-22 00:00:00','2026-04-22 00:00:00');
 
 -- ---------------------------------------------------------
 -- Table : `model_has_roles` (2 ligne(s))
@@ -735,125 +745,125 @@ REPLACE INTO `application_app` VALUES (10, 'Suivi de temps', 'time', 'time.png',
 -- Table : `menu_mnu` (118 ligne(s))
 -- ---------------------------------------------------------
 /*M!999999\- enable the sandbox mode */ 
-REPLACE INTO `menu_mnu` VALUES
-(1,NULL,NULL,NULL,NULL,'Tous les dossiers',136,1,'/tickets',NULL,'Main',1,'DESKTOP','item','tickets.view'),
-(2,NULL,NULL,NULL,NULL,'Tiers',119,1,'/partners','<ShopOutlined />','Main',2,'DESKTOP','item','partners.view'),
-(3,NULL,NULL,NULL,NULL,'Contacts',119,2,'/contacts','<TeamOutlined />','Main',2,'DESKTOP','item','contacts.view'),
-(8,NULL,NULL,NULL,NULL,'Utilisateur',0,1,'/users','<UserOutlined />','Main',8,'DESKTOP','item','users.view'),
-(21,NULL,NULL,NULL,NULL,'Appareils',119,3,'/devices','<LaptopOutlined />','Main',2,'DESKTOP','item','devices.view'),
-(53,NULL,NULL,NULL,NULL,'Commandes clients',122,3,'/sale-orders','<ShoppingCartOutlined />','Main',3,'DESKTOP','item','sale-orders.view'),
-(54,NULL,NULL,NULL,NULL,'Devis clients',122,2,'/sale-quotations','<FileTextOutlined />','Main',3,'DESKTOP','item','sale-orders.view'),
-(56,NULL,NULL,NULL,NULL,'Commandes fournisseurs',124,3,'/purchase-orders','<ShoppingOutlined />','Main',4,'DESKTOP','item','purchase-orders.view'),
-(57,NULL,NULL,NULL,NULL,'Factures clients',122,4,'/customer-invoices','<FileDoneOutlined />','Main',3,'DESKTOP','item','invoices.view'),
-(59,NULL,NULL,NULL,NULL,'Factures fournisseurs',124,4,'/supplier-invoices','<FileDoneOutlined />','Main',4,'DESKTOP','item','invoices.view'),
-(62,NULL,NULL,NULL,NULL,'Écritures',130,1,'/account-moves','<EditOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(64,NULL,NULL,NULL,NULL,'Produits & Services',121,2,'/products','<AppstoreOutlined />','Main',3,'DESKTOP','item','products.view'),
-(65,NULL,NULL,NULL,NULL,'Transfert en comptabilité',129,1,'/account-transfers','<SwapOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(66,NULL,NULL,NULL,NULL,'Rapprochement bancaire',131,1,'/account-bank-reconciliations','<BankOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(67,NULL,NULL,NULL,NULL,'Lettrage',130,3,'/account-lettering','<LinkOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(70,NULL,NULL,NULL,NULL,'Prospection',0,2,NULL,NULL,'Main',2,'DESKTOP','group',NULL),
-(71,NULL,NULL,NULL,NULL,'Contrats clients',120,1,'/customercontracts','<FileSyncOutlined />','Main',3,'DESKTOP','item','contracts.view'),
-(72,NULL,NULL,NULL,NULL,'Facturer les contrats',120,2,'/generate-contract-invoices','<ContainerOutlined />','Main',3,'DESKTOP','item','invoices.view'),
-(73,NULL,NULL,NULL,NULL,'Export',134,2,'/accounting-exports','<ExportOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(75,NULL,NULL,NULL,NULL,'Import',134,1,'/accounting-imports','<ImportOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(77,NULL,NULL,NULL,NULL,'Sauvegarde & Restauration',134,3,'/accounting-backups','<CloudUploadOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(81,NULL,NULL,NULL,NULL,'États',133,1,'/accounting-editions','<BarChartOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(82,NULL,NULL,NULL,NULL,'Clôture',134,4,'/accounting-closures','<LockOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(85,NULL,NULL,NULL,NULL,'Travail sur un compte',130,4,'/account-working','<AuditOutlined />','Main',6,'DESKTOP','item','accountings.view'),
-(88,NULL,NULL,NULL,NULL,'Charges fiscales/sociales',132,1,'/charges','<CalculatorOutlined />','Main',9,'DESKTOP','item','charges.view'),
-(90,NULL,NULL,NULL,NULL,'Bons de livraison',130,1,'/customer-delivery-notes','<SendOutlined />','Main',5,'DESKTOP','item','stocks.view'),
-(91,NULL,NULL,NULL,NULL,'Bons de réception',130,2,'/supplier-reception-notes','<InboxOutlined />','Main',5,'DESKTOP','item','stocks.view'),
-(92,NULL,NULL,NULL,NULL,'Mouvements',130,3,'/stock-movements','<RetweetOutlined />','Main',5,'DESKTOP','item','stocks.view'),
-(93,NULL,NULL,NULL,NULL,'Stock',131,1,'/stocks','<DatabaseOutlined />','Main',5,'DESKTOP','item','stocks.view'),
-(94,NULL,NULL,NULL,NULL,'Règlements clients',123,1,'/customer-payments','<CreditCardOutlined />','Main',3,'DESKTOP','item','payments.view'),
-(95,NULL,NULL,NULL,NULL,'Règlements fournisseurs',125,9,'/supplier-payments','<PayCircleOutlined />','Main',4,'DESKTOP','item','payments.view'),
-(101,NULL,NULL,NULL,NULL,'Règlement charges',132,2,'/charge-payments','<AccountBookOutlined />','Main',9,'DESKTOP','item','payments.view'),
-(106,NULL,NULL,NULL,NULL,'Clients',121,1,'/customers','<ShopOutlined />','Main',3,'DESKTOP','item','partners.view'),
-(107,NULL,NULL,NULL,NULL,'Fournisseurs',126,1,'/suppliers','<ShopOutlined />','Main',4,'DESKTOP','item','partners.view'),
-(109,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Toutes les notes de frais',156,2,'/expense-reports',NULL,'Main',7,'DESKTOP','item','expenses.approve'),
-(110,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Mes notes de frais',155,1,'/my-expense-reports',NULL,'Main',7,'DESKTOP','item','expenses.my.view'),
-(111,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Devis fournisseurs',124,2,'/purchase-quotations','<FileSearchOutlined />','Main',4,'DESKTOP','item','purchase-orders.view'),
-(113,NULL,NULL,NULL,NULL,'Vue d\'ensemble',0,0,'/settings',NULL,'Main',8,'DESKTOP','item','settings.view'),
-(114,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Dashboard commercial',70,5,'/prospect-dashboard','<DashboardOutlined />','Main',2,'DESKTOP','item','opportunities.view'),
-(115,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Prospects',70,6,'/prospects','<UserAddOutlined />','Main',2,'DESKTOP','item','opportunities.view'),
-(116,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Opportunités',70,7,'/opportunities','<ThunderboltOutlined />','Main',2,'DESKTOP','item','opportunities.view'),
-(117,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Pipeline',70,9,'/opportunities/pipeline','<FunnelPlotOutlined />','Main',2,'DESKTOP','item','opportunities.view'),
-(118,'2026-03-20 10:04:17','2026-03-20 10:04:17',NULL,NULL,'Activités',70,8,'/prospect-activities','<CalendarOutlined />','Main',2,'DESKTOP','item','opportunities.view'),
-(119,NULL,NULL,NULL,NULL,'Principal',0,1,NULL,NULL,'Main',2,'DESKTOP','group',NULL),
-(120,NULL,NULL,NULL,NULL,'Contrat',0,3,NULL,NULL,'Main',3,'DESKTOP','group',NULL),
-(121,NULL,NULL,NULL,NULL,'Principal',0,1,NULL,NULL,'Main',3,'DESKTOP','group',NULL),
-(122,NULL,NULL,NULL,NULL,'Ventes',0,2,NULL,NULL,'Main',3,'DESKTOP','group',NULL),
-(123,NULL,NULL,NULL,NULL,'Finance',0,4,NULL,NULL,'Main',3,'DESKTOP','group',NULL),
-(124,NULL,NULL,NULL,NULL,'Achats',0,2,NULL,NULL,'Main',4,'DESKTOP','group',NULL),
-(125,NULL,NULL,NULL,NULL,'Finance',0,4,NULL,NULL,'Main',4,'DESKTOP','group',NULL),
-(126,NULL,NULL,NULL,NULL,'Principal',0,1,NULL,NULL,'Main',4,'DESKTOP','group',NULL),
-(127,NULL,NULL,NULL,NULL,'Mouvements',0,1,NULL,NULL,'Main',5,'DESKTOP','group',NULL),
-(128,NULL,NULL,NULL,NULL,'Stock',0,2,NULL,NULL,'Main',5,'DESKTOP','group',NULL),
-(129,NULL,NULL,NULL,NULL,'Intégration',0,1,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(130,NULL,NULL,NULL,NULL,'Saisie',0,2,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(131,NULL,NULL,NULL,NULL,'Banque',0,3,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(132,NULL,NULL,NULL,NULL,'Charges',0,5,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(133,NULL,NULL,NULL,NULL,'Reporting',0,5,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(134,NULL,NULL,NULL,NULL,'Données',0,6,NULL,NULL,'Main',6,'DESKTOP','group',NULL),
-(136,NULL,NULL,NULL,NULL,'Principal',0,1,NULL,NULL,'Main',1,'DESKTOP','group',NULL),
-(137,NULL,NULL,NULL,NULL,'Produits & Services',126,2,'/products','<AppstoreOutlined />','Main',4,'DESKTOP','item','products.view'),
-(140,NULL,NULL,NULL,NULL,'Suivi de temps',0,10,NULL,NULL,NULL,10,'BOTH','group',NULL),
-(146,NULL,NULL,NULL,NULL,'Administration',0,20,NULL,NULL,NULL,10,'BOTH','group',NULL),
-(147,NULL,NULL,NULL,NULL,'Suivi de temps',0,10,NULL,NULL,NULL,10,'BOTH','group',NULL),
-(148,NULL,NULL,NULL,NULL,'Saisies de temps',0,1,'/time-entries','<ClockCircleOutlined />','Main',10,'DESKTOP','item','time.view'),
-(149,NULL,NULL,NULL,NULL,'Vue semaine',147,20,'/time-week','<CalendarOutlined />',NULL,10,'BOTH','item','time.view'),
-(150,NULL,NULL,NULL,NULL,'Projets',0,2,'/time-projects','<FolderOutlined />','Main',10,'DESKTOP','item','time.view'),
-(151,NULL,NULL,NULL,NULL,'Administration',0,20,NULL,NULL,NULL,10,'BOTH','group',NULL),
-(152,NULL,NULL,NULL,NULL,'Approbation',151,10,'/time-approval','<CheckSquareOutlined />',NULL,10,'BOTH','item','time.approve'),
-(153,NULL,NULL,NULL,NULL,'Générer factures',151,20,'/time-invoicing','<FileTextOutlined />',NULL,10,'BOTH','item','time.invoice'),
-(154,NULL,NULL,NULL,NULL,'Rapports',10,50,'/time-reports','<BarChartOutlined />','Main',10,'DESKTOP','item','time.view.all'),
-(155,NULL,NULL,NULL,NULL,'Principal',0,1,NULL,NULL,'Main',7,'DESKTOP','group',NULL),
-(156,NULL,NULL,NULL,NULL,'Administration',0,20,NULL,NULL,NULL,7,'BOTH','group',NULL),
-(159,NULL,NULL,NULL,NULL,'GENERAL',0,100,'','/app-icons/administration.png','Main',8,'DESKTOP','group',NULL),
-(160,NULL,NULL,NULL,NULL,'Configuration de la société',159,101,'/settings/company-config',NULL,'Main',8,'DESKTOP','item','settings.company.edit'),
-(161,NULL,NULL,NULL,NULL,'Séquences de numérotation',159,102,'/settings/sequences',NULL,'Main',8,'DESKTOP','item','settings.company.view'),
-(162,NULL,NULL,NULL,NULL,'Profil utilisateur',159,103,'/settings/roles',NULL,'Main',8,'DESKTOP','item','settings.roles.edit'),
-(163,NULL,NULL,NULL,NULL,'Email',159,104,'/settings/message-email-accounts',NULL,'Main',8,'DESKTOP','item','settings.messageemailaccounts.edit'),
-(164,NULL,NULL,NULL,NULL,'Email modèle',159,105,'/settings/message-templates',NULL,'Main',8,'DESKTOP','item','settings.messagetemplates.edit'),
-(165,NULL,NULL,NULL,NULL,'Tâches planifiées (CRON)',159,106,'/crontasks',NULL,'Main',8,'DESKTOP','item','settings.crontask.write'),
-(166,NULL,NULL,NULL,NULL,'ASSISTANCE',0,200,'','/app-icons/assistance.png','Main',8,'DESKTOP','group',NULL),
-(167,NULL,NULL,NULL,NULL,'Configuration module assistance',166,201,'/settings/ticket-config',NULL,'Main',8,'DESKTOP','item','settings.ticketingconf.edit'),
-(168,NULL,NULL,NULL,NULL,'Catégories',166,202,'/settings/ticket-categories',NULL,'Main',8,'DESKTOP','item','settings.ticketingconf.view'),
-(169,NULL,NULL,NULL,NULL,'Grades',166,203,'/settings/ticket-grades',NULL,'Main',8,'DESKTOP','item','settings.ticketingconf.view'),
-(170,NULL,NULL,NULL,NULL,'Statuts',166,204,'/settings/ticket-statuses',NULL,'Main',8,'DESKTOP','item','settings.ticketingconf.view'),
-(171,NULL,NULL,NULL,NULL,'ACHAT',0,400,'','/app-icons/achat.png','Main',8,'DESKTOP','group',NULL),
-(172,NULL,NULL,NULL,NULL,'Configuration module achat',171,401,'/settings/purchase-order-conf',NULL,'Main',8,'DESKTOP','item','settings.purchaseorderconf.edit'),
-(173,NULL,NULL,NULL,NULL,'VENTE',0,500,'','/app-icons/vente.png','Main',8,'DESKTOP','group',NULL),
-(174,NULL,NULL,NULL,NULL,'Configuration module vente',173,501,'/settings/sale-order-conf',NULL,'Main',8,'DESKTOP','item','settings.saleorderconf.edit'),
-(175,NULL,NULL,NULL,NULL,'Contrat',159,110,'',NULL,'Main',8,'DESKTOP','item',NULL),
-(176,NULL,NULL,NULL,NULL,'Configuration module contrat',175,111,'/settings/contract-conf',NULL,'Main',8,'DESKTOP','item','settings.contractconf.edit'),
-(177,NULL,NULL,NULL,NULL,'Durée reconduction',175,112,'/settings/durations/renew-durations',NULL,'Main',8,'DESKTOP','item','settings.contractconf.edit'),
-(178,NULL,NULL,NULL,NULL,'Durée préavis',175,113,'/settings/durations/notice-durations',NULL,'Main',8,'DESKTOP','item','settings.contractconf.edit'),
-(179,NULL,NULL,NULL,NULL,'Fréquence de facturation contrat',175,114,'/settings/durations/invoicing-durations',NULL,'Main',8,'DESKTOP','item','settings.contractconf.edit'),
-(180,NULL,NULL,NULL,NULL,'Durée d\'abonnement',175,115,'/settings/durations/commitment-durations',NULL,'Main',8,'DESKTOP','item','settings.contractconf.edit'),
-(182,NULL,NULL,NULL,NULL,'Configuration module facturation',173,502,'/settings/invoice-conf',NULL,'Main',8,'DESKTOP','item','settings.invoiceconf.edit'),
-(183,NULL,NULL,NULL,NULL,'Condition de paiement',173,503,'/settings/durations/payment-conditions',NULL,'Main',8,'DESKTOP','item','settings.invoiceconf.edit'),
-(184,NULL,NULL,NULL,NULL,'CHARGE',0,900,'','/app-icons/charge.png','Main',8,'DESKTOP','group',NULL),
-(185,NULL,NULL,NULL,NULL,'Type de charge',184,901,'/settings/charge-types',NULL,'Main',8,'DESKTOP','item','settings.charges.edit'),
-(186,NULL,NULL,NULL,NULL,'COMPTABILITE',0,700,'','/app-icons/comptabilite.png','Main',8,'DESKTOP','group',NULL),
-(187,NULL,NULL,NULL,NULL,'Configuration comptable',186,701,'/settings/account-config',NULL,'Main',8,'DESKTOP','item','accountings.edit'),
-(188,NULL,NULL,NULL,NULL,'Plan comptable',186,702,'/settings/accounts',NULL,'Main',8,'DESKTOP','item','accountings.edit'),
-(189,NULL,NULL,NULL,NULL,'Journaux comptables',186,703,'/settings/account-journals',NULL,'Main',8,'DESKTOP','item','accountings.edit'),
-(190,NULL,NULL,NULL,NULL,'Mode de paiement',186,704,'/settings/payment-modes',NULL,'Main',8,'DESKTOP','item','accountings.edit'),
-(191,NULL,NULL,NULL,NULL,'TVA',186,705,'/settings/taxs',NULL,'Main',8,'DESKTOP','item','accountings.edit'),
-(192,NULL,NULL,NULL,NULL,'Position fiscale',186,706,'/settings/taxpositions',NULL,'Main',8,'DESKTOP','item','settings.taxs.edit'),
-(193,NULL,NULL,NULL,NULL,'STOCK',0,600,'','/app-icons/stock.png','Main',8,'DESKTOP','group',NULL),
-(194,NULL,NULL,NULL,NULL,'Entrepôts',193,601,'/settings/warehouses',NULL,'Main',8,'DESKTOP','item','stocks.edit'),
-(195,NULL,NULL,NULL,NULL,'RH',0,800,'','/app-icons/rh.png','Main',8,'DESKTOP','group',NULL),
-(196,NULL,NULL,NULL,NULL,'Configuration module notes de frais',195,801,'/settings/expense-config',NULL,'Main',8,'DESKTOP','item','settings.expenses.edit'),
-(197,NULL,NULL,NULL,NULL,'Catégorie',195,802,'/settings/expense-categories',NULL,'Main',8,'DESKTOP','item','settings.expenses.edit'),
-(198,NULL,NULL,NULL,NULL,'SUIVI DE TEMPS',0,1000,'','/app-icons/time.png','Main',8,'DESKTOP','group',NULL),
-(199,NULL,NULL,NULL,NULL,'Configuration module temps',198,1001,'/settings/time-config',NULL,'Main',8,'DESKTOP','item','time.invoice'),
-(200,NULL,NULL,NULL,NULL,'CRM',0,300,'','/app-icons/crm.png','Main',8,'DESKTOP','group',NULL),
-(201,NULL,NULL,NULL,NULL,'Étapes du pipeline',200,301,'/settings/prospect-pipeline-stages',NULL,'Main',8,'DESKTOP','item','settings.prospectconf.view'),
-(202,NULL,NULL,NULL,NULL,'Sources de leads',200,302,'/settings/prospect-sources',NULL,'Main',8,'DESKTOP','item','settings.prospectconf.view'),
-(203,NULL,NULL,NULL,NULL,'Raisons de perte',200,303,'/settings/prospect-lost-reasons',NULL,'Main',8,'DESKTOP','item','settings.prospectconf.view'),
-(204,NULL,NULL,NULL,NULL,'Déclarations TVA',130,2,'/vat-declarations',' <EuroCircleOutlined />','Main',6,'DESKTOP','item','accountings.view');
+REPLACE INTO `menu_mnu` VALUES (136, NULL, NULL, NULL, NULL, 'Principal', 0, 1010, NULL, NULL, 'Main', 1, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (1, NULL, NULL, NULL, NULL, 'Tous les dossiers', 136, 1011, '/tickets', NULL, 'Main', 1, 'DESKTOP', 'item', 'tickets.view');
+REPLACE INTO `menu_mnu` VALUES (119, NULL, NULL, NULL, NULL, 'Principal', 0, 2010, NULL, NULL, 'Main', 2, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (114, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Dashboard commercial', 70, 2011, '/prospect-dashboard', '<DashboardOutlined />', 'Main', 2, 'DESKTOP', 'item', 'opportunities.view');
+REPLACE INTO `menu_mnu` VALUES (115, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Prospects', 70, 2012, '/prospects', '<UserAddOutlined />', 'Main', 2, 'DESKTOP', 'item', 'opportunities.view');
+REPLACE INTO `menu_mnu` VALUES (116, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Opportunités', 70, 2013, '/opportunities', '<ThunderboltOutlined />', 'Main', 2, 'DESKTOP', 'item', 'opportunities.view');
+REPLACE INTO `menu_mnu` VALUES (117, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Pipeline', 70, 2014, '/opportunities/pipeline', '<FunnelPlotOutlined />', 'Main', 2, 'DESKTOP', 'item', 'opportunities.view');
+REPLACE INTO `menu_mnu` VALUES (118, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Activités', 70, 2015, '/prospect-activities', '<CalendarOutlined />', 'Main', 2, 'DESKTOP', 'item', 'opportunities.view');
+REPLACE INTO `menu_mnu` VALUES (70, NULL, NULL, NULL, NULL, 'Prospection', 0, 2020, NULL, NULL, 'Main', 2, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (2, NULL, NULL, NULL, NULL, 'Tiers', 119, 2021, '/partners', '<ShopOutlined />', 'Main', 2, 'DESKTOP', 'item', 'partners.view');
+REPLACE INTO `menu_mnu` VALUES (3, NULL, NULL, NULL, NULL, 'Contacts', 119, 2022, '/contacts', '<TeamOutlined />', 'Main', 2, 'DESKTOP', 'item', 'contacts.view');
+REPLACE INTO `menu_mnu` VALUES (21, NULL, NULL, NULL, NULL, 'Appareils', 119, 2023, '/devices', '<LaptopOutlined />', 'Main', 2, 'DESKTOP', 'item', 'devices.view');
+REPLACE INTO `menu_mnu` VALUES (106, NULL, NULL, NULL, NULL, 'Clients', 121, 3010, '/customers', '<ShopOutlined />', 'Main', 3, 'DESKTOP', 'item', 'partners.view');
+REPLACE INTO `menu_mnu` VALUES (121, NULL, NULL, NULL, NULL, 'Principal', 0, 3010, NULL, NULL, 'Main', 3, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (64, NULL, NULL, NULL, NULL, 'Produits & Services', 121, 3011, '/products', '<AppstoreOutlined />', 'Main', 3, 'DESKTOP', 'item', 'products.view');
+REPLACE INTO `menu_mnu` VALUES (72, NULL, NULL, NULL, NULL, 'Facturer les contrats', 120, 3012, '/generate-contract-invoices', '<ContainerOutlined />', 'Main', 3, 'DESKTOP', 'item', 'invoices.view');
+REPLACE INTO `menu_mnu` VALUES (122, NULL, NULL, NULL, NULL, 'Ventes', 0, 3020, NULL, NULL, 'Main', 3, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (53, NULL, NULL, NULL, NULL, 'Commandes clients', 122, 3021, '/sale-orders', '<ShoppingCartOutlined />', 'Main', 3, 'DESKTOP', 'item', 'sale-orders.view');
+REPLACE INTO `menu_mnu` VALUES (54, NULL, NULL, NULL, NULL, 'Devis clients', 122, 3022, '/sale-quotations', '<FileTextOutlined />', 'Main', 3, 'DESKTOP', 'item', 'sale-orders.view');
+REPLACE INTO `menu_mnu` VALUES (57, NULL, NULL, NULL, NULL, 'Factures clients', 122, 3023, '/customer-invoices', '<FileDoneOutlined />', 'Main', 3, 'DESKTOP', 'item', 'invoices.view');
+REPLACE INTO `menu_mnu` VALUES (120, NULL, NULL, NULL, NULL, 'Contrat', 0, 3030, NULL, NULL, 'Main', 3, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (71, NULL, NULL, NULL, NULL, 'Contrats clients', 120, 3031, '/customercontracts', '<FileSyncOutlined />', 'Main', 3, 'DESKTOP', 'item', 'contracts.view');
+REPLACE INTO `menu_mnu` VALUES (123, NULL, NULL, NULL, NULL, 'Finance', 0, 3040, NULL, NULL, 'Main', 3, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (94, NULL, NULL, NULL, NULL, 'Règlements clients', 123, 3041, '/customer-payments', '<CreditCardOutlined />', 'Main', 3, 'DESKTOP', 'item', 'payments.view');
+REPLACE INTO `menu_mnu` VALUES (126, NULL, NULL, NULL, NULL, 'Principal', 0, 4010, NULL, NULL, 'Main', 4, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (107, NULL, NULL, NULL, NULL, 'Fournisseurs', 126, 4011, '/suppliers', '<ShopOutlined />', 'Main', 4, 'DESKTOP', 'item', 'partners.view');
+REPLACE INTO `menu_mnu` VALUES (137, NULL, NULL, NULL, NULL, 'Produits & Services', 126, 4012, '/products', '<AppstoreOutlined />', 'Main', 4, 'DESKTOP', 'item', 'products.view');
+REPLACE INTO `menu_mnu` VALUES (124, NULL, NULL, NULL, NULL, 'Achats', 0, 4020, NULL, NULL, 'Main', 4, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (111, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Devis fournisseurs', 124, 4021, '/purchase-quotations', '<FileSearchOutlined />', 'Main', 4, 'DESKTOP', 'item', 'purchase-orders.view');
+REPLACE INTO `menu_mnu` VALUES (56, NULL, NULL, NULL, NULL, 'Commandes fournisseurs', 124, 4022, '/purchase-orders', '<ShoppingOutlined />', 'Main', 4, 'DESKTOP', 'item', 'purchase-orders.view');
+REPLACE INTO `menu_mnu` VALUES (206, NULL, NULL, NULL, NULL, 'Factures entrantes', 124, 4023, '/e-invoicing/inbox', '<InboxOutlined />', NULL, 4, 'DESKTOP', 'item', 'einvoicing.receive');
+REPLACE INTO `menu_mnu` VALUES (59, NULL, NULL, NULL, NULL, 'Factures fournisseurs', 124, 4024, '/supplier-invoices', '<FileDoneOutlined />', 'Main', 4, 'DESKTOP', 'item', 'invoices.view');
+REPLACE INTO `menu_mnu` VALUES (125, NULL, NULL, NULL, NULL, 'Finance', 0, 4030, NULL, NULL, 'Main', 4, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (95, NULL, NULL, NULL, NULL, 'Règlements fournisseurs', 125, 4031, '/supplier-payments', '<PayCircleOutlined />', 'Main', 4, 'DESKTOP', 'item', 'payments.view');
+REPLACE INTO `menu_mnu` VALUES (93, NULL, NULL, NULL, NULL, 'Stock', 0, 5010, '/stocks', '<DatabaseOutlined />', 'Main', 5, 'DESKTOP', 'item', 'stocks.view');
+REPLACE INTO `menu_mnu` VALUES (91, NULL, NULL, NULL, NULL, 'Bons de réception', 0, 5020, '/supplier-reception-notes', '<InboxOutlined />', 'Main', 5, 'DESKTOP', 'item', 'stocks.view');
+REPLACE INTO `menu_mnu` VALUES (90, NULL, NULL, NULL, NULL, 'Bons de livraison', 0, 5030, '/customer-delivery-notes', '<SendOutlined />', 'Main', 5, 'DESKTOP', 'item', 'stocks.view');
+REPLACE INTO `menu_mnu` VALUES (92, NULL, NULL, NULL, NULL, 'Mouvements', 0, 5050, '/stock-movements', '<RetweetOutlined />', 'Main', 5, 'DESKTOP', 'item', 'stocks.view');
+REPLACE INTO `menu_mnu` VALUES (129, NULL, NULL, NULL, NULL, 'Intégration', 0, 6010, NULL, NULL, 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (65, NULL, NULL, NULL, NULL, 'Transfert en comptabilité', 129, 6011, '/account-transfers', '<SwapOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (130, NULL, NULL, NULL, NULL, 'Saisie', 0, 6020, NULL, NULL, 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (62, NULL, NULL, NULL, NULL, 'Écritures', 130, 6021, '/account-moves', '<EditOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (67, NULL, NULL, NULL, NULL, 'Lettrage', 130, 6022, '/account-lettering', '<LinkOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (85, NULL, NULL, NULL, NULL, 'Travail sur un compte', 130, 6023, '/account-working', '<AuditOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (204, NULL, NULL, NULL, NULL, 'Déclarations TVA', 130, 6024, '/vat-declarations', ' <EuroCircleOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (131, NULL, NULL, NULL, NULL, 'Banque', 0, 6030, NULL, NULL, 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (66, NULL, NULL, NULL, NULL, 'Rapprochement bancaire', 131, 6031, '/account-bank-reconciliations', '<BankOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (133, NULL, NULL, NULL, NULL, 'Reporting', 0, 6050, NULL, NULL, 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (81, NULL, NULL, NULL, NULL, 'États', 133, 6051, '/accounting-editions', '<BarChartOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (134, NULL, NULL, NULL, NULL, 'Données', 0, 6060, NULL, NULL, 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (73, NULL, NULL, NULL, NULL, 'Export', 134, 6061, '/accounting-exports', '<ExportOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (75, NULL, NULL, NULL, NULL, 'Import', 134, 6062, '/accounting-imports', '<ImportOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (77, NULL, NULL, NULL, NULL, 'Sauvegarde & Restauration', 134, 6063, '/accounting-backups', '<CloudUploadOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (82, NULL, NULL, NULL, NULL, 'Clôture', 134, 6064, '/accounting-closures', '<LockOutlined />', 'Main', 6, 'DESKTOP', 'item', 'accountings.view');
+REPLACE INTO `menu_mnu` VALUES (205, NULL, NULL, NULL, NULL, 'Facturation Élec.', 0, 6070, NULL, '<CloudServerOutlined />', 'Main', 6, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (207, NULL, NULL, NULL, NULL, 'E-reporting', 205, 6071, '/e-invoicing/e-reporting', '<BarChartOutlined />', NULL, 6, 'DESKTOP', 'item', 'einvoicing.view');
+REPLACE INTO `menu_mnu` VALUES (155, NULL, NULL, NULL, NULL, 'Principal', 0, 7010, NULL, NULL, 'Main', 7, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (110, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Mes notes de frais', 155, 7011, '/my-expense-reports', NULL, 'Main', 7, 'DESKTOP', 'item', 'expenses.my.view');
+REPLACE INTO `menu_mnu` VALUES (156, NULL, NULL, NULL, NULL, 'Administration', 0, 7020, NULL, NULL, NULL, 7, 'BOTH', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (109, '2026-03-20 11:04:17', '2026-03-20 11:04:17', NULL, NULL, 'Toutes les notes de frais', 156, 7021, '/expense-reports', NULL, 'Main', 7, 'DESKTOP', 'item', 'expenses.approve');
+REPLACE INTO `menu_mnu` VALUES (113, NULL, NULL, NULL, NULL, 'Vue d\'ensemble', 0, 8010, '/settings', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.view');
+REPLACE INTO `menu_mnu` VALUES (8, NULL, NULL, NULL, NULL, 'Utilisateur', 0, 8020, '/users', '<UserOutlined />', 'Main', 8, 'DESKTOP', 'item', 'users.view');
+REPLACE INTO `menu_mnu` VALUES (159, NULL, NULL, NULL, NULL, 'GENERAL', 0, 8030, '', '/app-icons/administration.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (160, NULL, NULL, NULL, NULL, 'Configuration de la société', 159, 8031, '/settings/company-config', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.company.edit');
+REPLACE INTO `menu_mnu` VALUES (161, NULL, NULL, NULL, NULL, 'Séquences de numérotation', 159, 8032, '/settings/sequences', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.company.view');
+REPLACE INTO `menu_mnu` VALUES (162, NULL, NULL, NULL, NULL, 'Profil utilisateur', 159, 8033, '/settings/roles', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.roles.edit');
+REPLACE INTO `menu_mnu` VALUES (163, NULL, NULL, NULL, NULL, 'Email', 159, 8034, '/settings/message-email-accounts', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.messageemailaccounts.edit');
+REPLACE INTO `menu_mnu` VALUES (164, NULL, NULL, NULL, NULL, 'Email modèle', 159, 8035, '/settings/message-templates', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.messagetemplates.edit');
+REPLACE INTO `menu_mnu` VALUES (175, NULL, NULL, NULL, NULL, 'Contrat', 159, 8040, '', NULL, 'Main', 8, 'DESKTOP', 'item', NULL);
+REPLACE INTO `menu_mnu` VALUES (176, NULL, NULL, NULL, NULL, 'Configuration module contrat', 175, 8041, '/settings/contract-conf', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.contractconf.edit');
+REPLACE INTO `menu_mnu` VALUES (177, NULL, NULL, NULL, NULL, 'Durée reconduction', 175, 8042, '/settings/durations/renew-durations', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.contractconf.edit');
+REPLACE INTO `menu_mnu` VALUES (178, NULL, NULL, NULL, NULL, 'Durée préavis', 175, 8043, '/settings/durations/notice-durations', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.contractconf.edit');
+REPLACE INTO `menu_mnu` VALUES (179, NULL, NULL, NULL, NULL, 'Fréquence de facturation contrat', 175, 8044, '/settings/durations/invoicing-durations', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.contractconf.edit');
+REPLACE INTO `menu_mnu` VALUES (180, NULL, NULL, NULL, NULL, 'Durée d\'abonnement', 175, 8045, '/settings/durations/commitment-durations', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.contractconf.edit');
+REPLACE INTO `menu_mnu` VALUES (166, NULL, NULL, NULL, NULL, 'ASSISTANCE', 0, 8050, '', '/app-icons/assistance.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (167, NULL, NULL, NULL, NULL, 'Configuration module assistance', 166, 8051, '/settings/ticket-config', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.ticketingconf.edit');
+REPLACE INTO `menu_mnu` VALUES (168, NULL, NULL, NULL, NULL, 'Catégories', 166, 8052, '/settings/ticket-categories', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.ticketingconf.view');
+REPLACE INTO `menu_mnu` VALUES (169, NULL, NULL, NULL, NULL, 'Grades', 166, 8053, '/settings/ticket-grades', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.ticketingconf.view');
+REPLACE INTO `menu_mnu` VALUES (170, NULL, NULL, NULL, NULL, 'Statuts', 166, 8054, '/settings/ticket-statuses', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.ticketingconf.view');
+REPLACE INTO `menu_mnu` VALUES (200, NULL, NULL, NULL, NULL, 'CRM', 0, 8060, '', '/app-icons/crm.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (201, NULL, NULL, NULL, NULL, 'Étapes du pipeline', 200, 8061, '/settings/prospect-pipeline-stages', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.prospectconf.view');
+REPLACE INTO `menu_mnu` VALUES (202, NULL, NULL, NULL, NULL, 'Sources de leads', 200, 8062, '/settings/prospect-sources', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.prospectconf.view');
+REPLACE INTO `menu_mnu` VALUES (203, NULL, NULL, NULL, NULL, 'Raisons de perte', 200, 8063, '/settings/prospect-lost-reasons', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.prospectconf.view');
+REPLACE INTO `menu_mnu` VALUES (171, NULL, NULL, NULL, NULL, 'ACHAT', 0, 8070, '', '/app-icons/achat.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (172, NULL, NULL, NULL, NULL, 'Configuration module achat', 171, 8071, '/settings/purchase-order-conf', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.purchaseorderconf.edit');
+REPLACE INTO `menu_mnu` VALUES (173, NULL, NULL, NULL, NULL, 'VENTE', 0, 8080, '', '/app-icons/vente.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (174, NULL, NULL, NULL, NULL, 'Configuration module vente', 173, 8081, '/settings/sale-order-conf', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.saleorderconf.edit');
+REPLACE INTO `menu_mnu` VALUES (182, NULL, NULL, NULL, NULL, 'Configuration module facturation', 173, 8082, '/settings/invoice-conf', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.invoiceconf.edit');
+REPLACE INTO `menu_mnu` VALUES (183, NULL, NULL, NULL, NULL, 'Condition de paiement', 173, 8083, '/settings/durations/payment-conditions', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.invoiceconf.edit');
+REPLACE INTO `menu_mnu` VALUES (193, NULL, NULL, NULL, NULL, 'STOCK', 0, 8090, '', '/app-icons/stock.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (194, NULL, NULL, NULL, NULL, 'Entrepôts', 193, 8091, '/settings/warehouses', NULL, 'Main', 8, 'DESKTOP', 'item', 'stocks.edit');
+REPLACE INTO `menu_mnu` VALUES (186, NULL, NULL, NULL, NULL, 'COMPTABILITE', 0, 8100, '', '/app-icons/comptabilite.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (187, NULL, NULL, NULL, NULL, 'Configuration comptable', 186, 8101, '/settings/account-config', NULL, 'Main', 8, 'DESKTOP', 'item', 'accountings.edit');
+REPLACE INTO `menu_mnu` VALUES (188, NULL, NULL, NULL, NULL, 'Plan comptable', 186, 8102, '/settings/accounts', NULL, 'Main', 8, 'DESKTOP', 'item', 'accountings.edit');
+REPLACE INTO `menu_mnu` VALUES (189, NULL, NULL, NULL, NULL, 'Journaux comptables', 186, 8103, '/settings/account-journals', NULL, 'Main', 8, 'DESKTOP', 'item', 'accountings.edit');
+REPLACE INTO `menu_mnu` VALUES (190, NULL, NULL, NULL, NULL, 'Mode de paiement', 186, 8104, '/settings/payment-modes', NULL, 'Main', 8, 'DESKTOP', 'item', 'accountings.edit');
+REPLACE INTO `menu_mnu` VALUES (191, NULL, NULL, NULL, NULL, 'TVA', 186, 8105, '/settings/taxs', NULL, 'Main', 8, 'DESKTOP', 'item', 'accountings.edit');
+REPLACE INTO `menu_mnu` VALUES (192, NULL, NULL, NULL, NULL, 'Position fiscale', 186, 8106, '/settings/taxpositions', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.taxs.edit');
+REPLACE INTO `menu_mnu` VALUES (208, NULL, NULL, NULL, NULL, 'Facturation Élec.', 186, 8107, '/e-invoicing/settings', NULL, 'Main', 8, 'DESKTOP', 'item', 'einvoicing.settings');
+REPLACE INTO `menu_mnu` VALUES (195, NULL, NULL, NULL, NULL, 'RH', 0, 8110, '', '/app-icons/rh.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (196, NULL, NULL, NULL, NULL, 'Configuration module notes de frais', 195, 8111, '/settings/expense-config', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.expenses.edit');
+REPLACE INTO `menu_mnu` VALUES (197, NULL, NULL, NULL, NULL, 'Catégorie', 195, 8112, '/settings/expense-categories', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.expenses.edit');
+REPLACE INTO `menu_mnu` VALUES (184, NULL, NULL, NULL, NULL, 'CHARGE', 0, 8120, '', '/app-icons/charge.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (185, NULL, NULL, NULL, NULL, 'Type de charge', 184, 8121, '/settings/charge-types', NULL, 'Main', 8, 'DESKTOP', 'item', 'settings.charges.edit');
+REPLACE INTO `menu_mnu` VALUES (198, NULL, NULL, NULL, NULL, 'SUIVI DE TEMPS', 0, 8130, '', '/app-icons/time.png', 'Main', 8, 'DESKTOP', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (199, NULL, NULL, NULL, NULL, 'Configuration module temps', 198, 8131, '/settings/time-config', NULL, 'Main', 8, 'DESKTOP', 'item', 'time.invoice');
+REPLACE INTO `menu_mnu` VALUES (88, NULL, NULL, NULL, NULL, 'Charges fiscales/sociales', 132, 9010, '/charges', '<CalculatorOutlined />', 'Main', 9, 'DESKTOP', 'item', 'charges.view');
+REPLACE INTO `menu_mnu` VALUES (101, NULL, NULL, NULL, NULL, 'Règlement charges', 132, 9020, '/charge-payments', '<AccountBookOutlined />', 'Main', 9, 'DESKTOP', 'item', 'payments.view');
+REPLACE INTO `menu_mnu` VALUES (140, NULL, NULL, NULL, NULL, 'Suivi de temps', 0, 10010, NULL, NULL, NULL, 10, 'BOTH', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (146, NULL, NULL, NULL, NULL, 'Administration', 0, 10020, NULL, NULL, NULL, 10, 'BOTH', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (147, NULL, NULL, NULL, NULL, 'Suivi de temps', 0, 10030, NULL, NULL, NULL, 10, 'BOTH', 'group', NULL);
+REPLACE INTO `menu_mnu` VALUES (149, NULL, NULL, NULL, NULL, 'Vue semaine', 147, 10031, '/time-week', '<CalendarOutlined />', NULL, 10, 'BOTH', 'item', 'time.view');
+REPLACE INTO `menu_mnu` VALUES (148, NULL, NULL, NULL, NULL, 'Saisies de temps', 0, 10040, '/time-entries', '<ClockCircleOutlined />', 'Main', 10, 'DESKTOP', 'item', 'time.view');
+REPLACE INTO `menu_mnu` VALUES (150, NULL, NULL, NULL, NULL, 'Projets', 0, 10060, '/time-projects', '<FolderOutlined />', 'Main', 10, 'DESKTOP', 'item', 'time.view');
+REPLACE INTO `menu_mnu` VALUES (152, NULL, NULL, NULL, NULL, 'Approbation', 151, 10061, '/time-approval', '<CheckSquareOutlined />', NULL, 10, 'BOTH', 'item', 'time.approve');
+REPLACE INTO `menu_mnu` VALUES (153, NULL, NULL, NULL, NULL, 'Générer factures', 151, 10062, '/time-invoicing', '<FileTextOutlined />', NULL, 10, 'BOTH', 'item', 'time.invoice');
+REPLACE INTO `menu_mnu` VALUES (154, NULL, NULL, NULL, NULL, 'Rapports', 151, 10063, '/time-reports', '<BarChartOutlined />', 'Main', 10, 'DESKTOP', 'item', 'time.view.all');
+REPLACE INTO `menu_mnu` VALUES (151, NULL, NULL, NULL, NULL, 'Administration', 0, 10070, NULL, NULL, NULL, 10, 'BOTH', 'group', NULL);
+
 
 -- ---------------------------------------------------------
 -- Table : `expense_config_eco` (1 ligne(s))
@@ -924,7 +934,7 @@ REPLACE INTO `charge_type_cht` VALUES
 -- ---------------------------------------------------------
 /*M!999999\- enable the sandbox mode */ 
 REPLACE INTO `company_cop` VALUES
-(1,NULL,'2026-01-28 08:58:23',NULL,84,'ZELMO Demo','1 Place de l\'Horloge','75008','Paris','01 02 03 04 05',NULL,'123 456 789','SAS','Paris','500 000','5829C','FR12345695401',-1,733,734,NULL,'/company/cgv.pdf',27,28,6,'- Veuillez saisir votre réponse au-dessus de cette ligne -','demo_webhook_token_replace_me','','','');
+(1,NULL,'2026-01-28 08:58:23',NULL,84,'ZELMO Demo','1 Place de l\'Horloge','75008','Paris','FR','01 02 03 04 05',NULL,'123 456 789','SAS','Paris','500 000','5829C','FR12345695401',-1,733,734,NULL,'/company/cgv.pdf',27,28,6,'- Veuillez saisir votre réponse au-dessus de cette ligne -','demo_webhook_token_replace_me','','','');
 
 -- ---------------------------------------------------------
 -- Table : `account_tax_tax` (43 ligne(s))
@@ -1876,6 +1886,48 @@ INSERT INTO `prospect_pipeline_stage_pps` (`pps_id`, `pps_created`, `pps_updated
 (5, '2026-02-17 15:40:46', '2026-02-17 15:40:46', NULL, NULL, 'Gagné', 5, '#52c41a', 1, 0, 100, 1, 0),
 (6, '2026-02-17 15:40:46', '2026-02-17 15:40:46', NULL, NULL, 'Perdu', 6, '#ff4d4f', 0, 1, 0, 1, 0);
 -- =============================================================
+-- Référentiel des pays ISO 3166-1 alpha-2
+-- =============================================================
+INSERT IGNORE INTO `country_cty` (`cty_code`, `cty_name`, `cty_is_eu`) VALUES
+('AF','Afghanistan',0),('ZA','Afrique du Sud',0),('AL','Albanie',0),('DZ','Algérie',0),('DE','Allemagne',1),
+('AD','Andorre',0),('AO','Angola',0),('AG','Antigua-et-Barbuda',0),('SA','Arabie saoudite',0),('AR','Argentine',0),
+('AM','Arménie',0),('AU','Australie',0),('AT','Autriche',1),('AZ','Azerbaïdjan',0),('BS','Bahamas',0),
+('BH','Bahreïn',0),('BD','Bangladesh',0),('BB','Barbade',0),('BY','Biélorussie',0),('BE','Belgique',1),
+('BZ','Belize',0),('BJ','Bénin',0),('BT','Bhoutan',0),('BO','Bolivie',0),('BA','Bosnie-Herzégovine',0),
+('BW','Botswana',0),('BR','Brésil',0),('BN','Brunei',0),('BG','Bulgarie',1),('BF','Burkina Faso',0),
+('BI','Burundi',0),('CV','Cabo Verde',0),('KH','Cambodge',0),('CM','Cameroun',0),('CA','Canada',0),
+('CF','Centrafrique',0),('CL','Chili',0),('CN','Chine',0),('CY','Chypre',1),('CO','Colombie',0),
+('KM','Comores',0),('CG','Congo',0),('CD','Congo (RDC)',0),('KP','Corée du Nord',0),('KR','Corée du Sud',0),
+('CR','Costa Rica',0),('CI','Côte d\'Ivoire',0),('HR','Croatie',1),('CU','Cuba',0),('DK','Danemark',1),
+('DJ','Djibouti',0),('DM','Dominique',0),('EG','Égypte',0),('SV','El Salvador',0),('AE','Émirats arabes unis',0),
+('EC','Équateur',0),('ER','Érythrée',0),('ES','Espagne',1),('EE','Estonie',1),('SZ','Eswatini',0),
+('US','États-Unis',0),('ET','Éthiopie',0),('FJ','Fidji',0),('FI','Finlande',1),('FR','France',1),
+('GA','Gabon',0),('GM','Gambie',0),('GE','Géorgie',0),('GH','Ghana',0),('GD','Grenade',0),
+('GT','Guatemala',0),('GN','Guinée',0),('GQ','Guinée équatoriale',0),('GW','Guinée-Bissau',0),('GY','Guyana',0),
+('HT','Haïti',0),('HN','Honduras',0),('HU','Hongrie',1),('IN','Inde',0),('ID','Indonésie',0),
+('IQ','Irak',0),('IR','Iran',0),('IE','Irlande',1),('IS','Islande',0),('IL','Israël',0),
+('IT','Italie',1),('JM','Jamaïque',0),('JP','Japon',0),('JO','Jordanie',0),('KZ','Kazakhstan',0),
+('KE','Kenya',0),('KI','Kiribati',0),('KW','Koweït',0),('KG','Kirghizistan',0),('LA','Laos',0),
+('LS','Lesotho',0),('LV','Lettonie',1),('LB','Liban',0),('LR','Libéria',0),('LY','Libye',0),
+('LI','Liechtenstein',0),('LT','Lituanie',1),('LU','Luxembourg',1),('MK','Macédoine du Nord',0),('MG','Madagascar',0),
+('MY','Malaisie',0),('MW','Malawi',0),('MV','Maldives',0),('ML','Mali',0),('MT','Malte',1),
+('MA','Maroc',0),('MH','Marshall',0),('MU','Maurice',0),('MR','Mauritanie',0),('MX','Mexique',0),
+('FM','Micronésie',0),('MD','Moldavie',0),('MC','Monaco',0),('MN','Mongolie',0),('ME','Monténégro',0),
+('MZ','Mozambique',0),('MM','Myanmar',0),('NA','Namibie',0),('NR','Nauru',0),('NP','Népal',0),
+('NI','Nicaragua',0),('NE','Niger',0),('NG','Nigéria',0),('NO','Norvège',0),('NZ','Nouvelle-Zélande',0),
+('OM','Oman',0),('UG','Ouganda',0),('UZ','Ouzbékistan',0),('PK','Pakistan',0),('PW','Palaos',0),
+('PA','Panama',0),('PG','Papouasie-Nouvelle-Guinée',0),('PY','Paraguay',0),('NL','Pays-Bas',1),('PE','Pérou',0),
+('PH','Philippines',0),('PL','Pologne',1),('PT','Portugal',1),('QA','Qatar',0),('RO','Roumanie',1),
+('GB','Royaume-Uni',0),('RU','Russie',0),('RW','Rwanda',0),('KN','Saint-Kitts-et-Nevis',0),('LC','Sainte-Lucie',0),
+('VC','Saint-Vincent-et-les-Grenadines',0),('WS','Samoa',0),('SM','Saint-Marin',0),('ST','Sao Tomé-et-Principe',0),('SN','Sénégal',0),
+('RS','Serbie',0),('SC','Seychelles',0),('SL','Sierra Leone',0),('SG','Singapour',0),('SK','Slovaquie',1),
+('SI','Slovénie',1),('SO','Somalie',0),('SD','Soudan',0),('SS','Soudan du Sud',0),('LK','Sri Lanka',0),
+('SE','Suède',1),('CH','Suisse',0),('SR','Suriname',0),('SY','Syrie',0),('TJ','Tadjikistan',0),
+('TZ','Tanzanie',0),('TD','Tchad',0),('CZ','Tchéquie',1),('TH','Thaïlande',0),('TL','Timor-Leste',0),
+('TG','Togo',0),('TO','Tonga',0),('TT','Trinité-et-Tobago',0),('TN','Tunisie',0),('TM','Turkménistan',0),
+('TR','Turquie',0),('TV','Tuvalu',0),('UA','Ukraine',0),('UY','Uruguay',0),('VU','Vanuatu',0),
+('VE','Venezuela',0),('VN','Viêt Nam',0),('YE','Yémen',0),('ZM','Zambie',0),('ZW','Zimbabwe',0);
+
 SET FOREIGN_KEY_CHECKS = 1;
 -- =============================================================
 -- FIN initialize_db.sql

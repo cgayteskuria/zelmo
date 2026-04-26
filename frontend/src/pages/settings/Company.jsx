@@ -7,6 +7,7 @@ import { useEntityForm } from "../../hooks/useEntityForm";
 import CanAccess from "../../components/common/CanAccess";
 import MessageTemplateSelect from "../../components/select/MessageTemplateSelect"
 import MessageEmailAccountSelect from "../../components/select/MessageEmailAccountSelect"
+import CountrySelect from "../../components/select/CountrySelect"
 import RichTextEditor from "../../components/common/RichTextEditor";
 
 // Import lazy du composant BankTab
@@ -64,7 +65,7 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
     /**
      * Fonctions CRUD
      */
-    const { submit, loading, loadError, reload } = useEntityForm({
+    const { submit, loading, loadError, reload, entity } = useEntityForm({
         api: companyApi,
         entityId: companyId,
         idField: 'cop_id',
@@ -185,7 +186,7 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
                         </Row>
 
                         <Row gutter={16}>
-                            <Col span={8}>
+                            <Col span={6}>
                                 <Form.Item
                                     name="cop_zip"
                                     label="Code postal"
@@ -194,12 +195,21 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
                                 </Form.Item>
                             </Col>
 
-                            <Col span={16}>
+                            <Col span={12}>
                                 <Form.Item
                                     name="cop_city"
                                     label="Ville"
                                 >
                                     <Input placeholder="Ville" />
+                                </Form.Item>
+                            </Col>
+
+                            <Col span={6}>
+                                <Form.Item
+                                    name="cop_country_code"
+                                    label="Pays"
+                                >
+                                    <CountrySelect initialData={entity?.cop_country_code ?? 'FR'} />
                                 </Form.Item>
                             </Col>
                         </Row>

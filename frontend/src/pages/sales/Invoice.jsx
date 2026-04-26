@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo, useCallback, lazy, Suspense, useRef } from "react";
-import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Alert, App } from "antd";
-import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, UnlockOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Alert, App, Tag } from "antd";
+import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, UnlockOutlined, LeftOutlined, RightOutlined, CloudUploadOutlined } from "@ant-design/icons";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useListNavigation } from "../../hooks/useListNavigation";
 import dayjs from "dayjs";
 import PageContainer from "../../components/common/PageContainer";
 import { invoicesGenericApi, partnersApi } from "../../services/api";
+import { eInvoicingApi } from "../../services/apiEInvoicing";
 import { getUser } from "../../services/auth";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import ContactSelect from "../../components/select/ContactSelect";
@@ -26,6 +27,7 @@ const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedO
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
 const PaymentsTab = lazy(() => import('../../components/bizdocument/PaymentsTab'));
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
+const EInvoicingInvoicePanel = lazy(() => import('../../components/einvoicing/EInvoicingInvoicePanel'));
 
 // Composant de chargement pour les onglets
 const TabLoader = () => (
@@ -81,6 +83,8 @@ export default function Invoice() {
 
     const [fkCtcId, setFkCtcId] = useState(null);
     const [showDeliveryAddress, setShowDeliveryAddress] = useState(false);
+    const [eInvoicingTransmission, setEInvoicingTransmission] = useState(null);
+    const [transmitting, setTransmitting] = useState(false);
 
     const [totals, setTotals] = useState({
         totalHT: 0,
@@ -191,6 +195,15 @@ export default function Invoice() {
 
         // Charger les lignes (via ref pour éviter la TDZ — fetchInvoiceLines est déclaré plus bas)
         fetchInvoiceLinesRef.current?.();
+
+        // Charger le statut e-facturation si la facture est finalisée
+        if (data.inv_status === INVOICE_STATUS.FINALIZED || data.inv_status === INVOICE_STATUS.ACCOUNTED) {
+            eInvoicingApi.getTransmissionStatus(data.inv_id).then((res) => {
+                setEInvoicingTransmission(res.data ?? null);
+            }).catch(() => {
+                setEInvoicingTransmission(null);
+            });
+        }
 
     }, []);
 
@@ -585,6 +598,59 @@ export default function Invoice() {
         );
     }, [invoiceId]);
 
+    const handleTransmitInvoice = useCallback(async () => {
+        if (!invoiceId) return;
+
+        // Validation des champs Facture-X requis (factures clients uniquement)
+        const isCustomerOp = invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE || invOperation === INVOICE_OPERATION.CUSTOMER_REFUND;
+        if (isCustomerOp && fkPtrId) {
+            setTransmitting(true);
+            let partner;
+            try {
+                const res = await partnersApi.get(fkPtrId);
+                partner = res.data;
+            } catch {
+                setTransmitting(false);
+                message.error("Impossible de vérifier la fiche client avant transmission.", 8);
+                return;
+            }
+
+            const missing = [];
+            if (!partner?.ptr_siret || !/^\d{14}$/.test(partner.ptr_siret)) {
+                missing.push('SIRET du client (14 chiffres)');
+            }
+            if (!partner?.ptr_country_code) {
+                missing.push('Code pays du client');
+            }
+            if (missing.length > 0) {
+                setTransmitting(false);
+                message.error({
+                    content: (
+                        <span>
+                            Champs requis manquants sur la fiche client :<br />
+                            {missing.map((f, i) => <span key={i}>• {f}<br /></span>)}
+                            Veuillez compléter la fiche partenaire avant de transmettre.
+                        </span>
+                    ),
+                    duration: 10,
+                });
+                return;
+            }
+        } else {
+            setTransmitting(true);
+        }
+
+        try {
+            const res = await eInvoicingApi.transmitInvoice(invoiceId);
+            message.success("Facture transmise au PA avec succès.");
+            setEInvoicingTransmission(res.data ?? null);
+        } catch (err) {
+            message.error(err?.message ?? "Erreur lors de la transmission.", 8);
+        } finally {
+            setTransmitting(false);
+        }
+    }, [invoiceId, invOperation, fkPtrId]);
+
     // Boutons d'action selon le statut
     const statusActionButtons = useMemo(() => {
         const buttons = [];
@@ -605,7 +671,7 @@ export default function Invoice() {
                 onClick: () => handleChangeBeingEdited(false),
                 type: 'primary'
             });
-        } else if (invStatus === INVOICE_STATUS.FINALIZED && invBeingEdited === false && Number(invPaymentProgress) === 0 && !usageInfo.isUsed) {
+        } else if (invStatus === INVOICE_STATUS.FINALIZED && invBeingEdited === false && Number(invPaymentProgress) === 0 && !usageInfo.isUsed && !eInvoicingTransmission) {
             buttons.push({
                 key: 'modify',
                 label: "Modifier la facture",
@@ -617,7 +683,7 @@ export default function Invoice() {
         }
 
         return buttons;
-    }, [invStatus, invBeingEdited, invPaymentProgress]);
+    }, [invStatus, invBeingEdited, invPaymentProgress, eInvoicingTransmission]);
 
     const tabItems = useMemo(() => {
         const items = [
@@ -827,18 +893,43 @@ export default function Invoice() {
                                     )}
                                 </Row>
                                 {invoiceId && (invStatus === INVOICE_STATUS.FINALIZED || invStatus === INVOICE_STATUS.ACCOUNTED) && invBeingEdited === false && (
-                                    <Row gutter={8}>
-                                        <Col span={12}>
-                                            <Button type="secondary" size="default" icon={<MailOutlined />} onClick={handleSend} style={{ width: '100%', margin: "4px" }} disabled={false}>
-                                                Envoyer
-                                            </Button>
-                                        </Col>
-                                        <Col span={12}>
-                                            <Button type="secondary" size="default" icon={<PrinterOutlined />} onClick={handlePrint} style={{ width: '100%', margin: "4px" }} disabled={false}>
-                                                Imprimer
-                                            </Button>
-                                        </Col>
-                                    </Row>
+                                    <>
+                                        <Row gutter={8}>
+                                            <Col span={12}>
+                                                <Button type="secondary" size="default" icon={<MailOutlined />} onClick={handleSend} style={{ width: '100%', margin: "4px" }} disabled={false}>
+                                                    Envoyer
+                                                </Button>
+                                            </Col>
+                                            <Col span={12}>
+                                                <Button type="secondary" size="default" icon={<PrinterOutlined />} onClick={handlePrint} style={{ width: '100%', margin: "4px" }} disabled={false}>
+                                                    Imprimer
+                                                </Button>
+                                            </Col>
+                                        </Row>
+                                        {(invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE || invOperation === INVOICE_OPERATION.CUSTOMER_REFUND) && (
+                                            <Row gutter={8}>
+                                                <Col span={24}>
+                                                    <Button
+                                                        size="default"
+                                                        icon={<CloudUploadOutlined />}
+                                                        onClick={handleTransmitInvoice}
+                                                        loading={transmitting}
+                                                        disabled={!!eInvoicingTransmission}
+                                                        style={{ width: '100%', margin: "4px" }}
+                                                        type={eInvoicingTransmission ? "default" : "default"}
+                                                    >
+                                                        {eInvoicingTransmission
+                                                            ? `${eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status} — ${
+                                                                eInvoicingTransmission.eit_transmitted_at
+                                                                    ? dayjs(eInvoicingTransmission.eit_transmitted_at).format('DD/MM/YYYY HH:mm')
+                                                                    : ''
+                                                              }`
+                                                            : "Transmettre via PDP"}
+                                                    </Button>
+                                                </Col>
+                                            </Row>
+                                        )}
+                                    </>
                                 )}
                                 {invoiceId && (
                                     <Row gutter={8}>
@@ -969,10 +1060,27 @@ export default function Invoice() {
                     </Suspense>
                 )
             });
+
+            if (eInvoicingTransmission) {
+                items.push({
+                    key: 'einvoicing',
+                    label: (
+                        <Space size={4}>
+                            <CloudUploadOutlined />
+                            Facturation Élec.
+                        </Space>
+                    ),
+                    children: (
+                        <Suspense fallback={<TabLoader />}>
+                            <EInvoicingInvoicePanel invoiceId={invoiceId} invOperation={invOperation} />
+                        </Suspense>
+                    )
+                });
+            }
         }
 
         return items;
-    }, [invoiceId, handleSend, handlePrint, statusActionButtons, formDisabled, invStatus, invBeingEdited, showDeleteBtn, handleDuplicate, handleDelete, invoiceLines, loadingLines, fetchInvoiceLines, handleRequestDocumentCreation, totals, marginData, fkPtrId, validateDueDate, invPaymentProgress, invOperation]);
+    }, [invoiceId, handleSend, handlePrint, statusActionButtons, formDisabled, invStatus, invBeingEdited, showDeleteBtn, handleDuplicate, handleDelete, invoiceLines, loadingLines, fetchInvoiceLines, handleRequestDocumentCreation, totals, marginData, fkPtrId, validateDueDate, invPaymentProgress, invOperation, eInvoicingTransmission, transmitting, handleTransmitInvoice]);
 
     const handleBack = useCallback(() => {
         navigate(getBasePath());
@@ -1011,7 +1119,19 @@ export default function Invoice() {
                         <Space>
                             {formatStatus(invStatus)}
                             {formatPaymentStatus(invPaymentProgress)}
-
+                            {eInvoicingTransmission && (
+                                <Tag
+                                    icon={<CloudUploadOutlined />}
+                                    color={eInvoicingTransmission.eit_status_color ?? ({
+                                        DEPOSEE: "processing", QUALIFIEE: "processing", MISE_A_DISPO: "processing",
+                                        ACCEPTEE: "success", PAYEE: "success",
+                                        REFUSEE: "error", LITIGE: "error", ERROR: "error",
+                                        EN_PAIEMENT: "warning",
+                                    }[eInvoicingTransmission.eit_status] ?? "default")}
+                                >
+                                    PDP : {eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status}
+                                </Tag>
+                            )}
                         </Space>
                     </div>
                 )

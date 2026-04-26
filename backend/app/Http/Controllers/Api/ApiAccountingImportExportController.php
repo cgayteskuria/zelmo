@@ -294,45 +294,44 @@ class ApiAccountingImportExportController extends Controller
     }
 
     /**
-     * Création d'un export FEC
+     * Création d'un export FEC ou CSV
      * POST /api/accounting-exports
      */
     public function export(Request $request): JsonResponse
-    {        
+    {
         $filters = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date',
+            'format'         => 'required|in:FEC,CSV',
+            'start_date'     => 'required|date',
+            'end_date'       => 'required|date',
             'account_from_id' => 'nullable|integer',
-            'account_to_id' => 'nullable|integer',
-            'journal_id' => 'nullable|integer',
+            'account_to_id'  => 'nullable|integer',
+            'ajl_id'         => 'nullable|integer',
         ]);
 
-        $AccountingService= new AccountingService();
-        $AccountingService->validateWritingPeriod($filters);
+        $accountingService = new AccountingService();
+        $accountingService->validateWritingPeriod($filters);
 
         DB::beginTransaction();
- 
 
         try {
-            $result = $this->exportService->exportFec(
-                $filters,
-                Auth::id()
-            );
+            $result = $filters['format'] === 'CSV'
+                ? $this->exportService->exportCsv($filters, Auth::id())
+                : $this->exportService->exportFec($filters, Auth::id());
 
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'aie_id' => $result['aie_id'],
+                'success'  => true,
+                'aie_id'   => $result['aie_id'],
                 'filename' => $result['filename'],
-                'size' => $result['size']
+                'size'     => $result['size'],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 400);
         }
     }

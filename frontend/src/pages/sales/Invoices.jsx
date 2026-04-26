@@ -1,11 +1,12 @@
 import { useRef, useMemo, useState, lazy, Suspense } from "react";
-import { Button, Dropdown, Space } from "antd";
-import { PlusOutlined, DownOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Space, Tag, Tooltip } from "antd";
+import { PlusOutlined, DownOutlined, FilePdfOutlined, CloudUploadOutlined, EditOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import ServerTable from "../../components/table";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import PageContainer from "../../components/common/PageContainer";
 import { createEditActionColumn } from "../../components/table/EditActionColumn";
+import CanAccess from "../../components/common/CanAccess";
 
 import { formatStatus, formatPaymentStatus, STATUS_CONFIG, PAYMENT_STATUS_CONFIG } from "../../configs/InvoiceConfig.jsx";
 import { customerInvoicesApi, supplierInvoicesApi } from "../../services/api";
@@ -183,7 +184,60 @@ export default function Invoices() {
             ],
             render: (value) => formatPaymentStatus(value),
         },
-        createEditActionColumn({ permission: "invoices.edit", onEdit: handleRowClick, idField: "id", mode: "table" }),
+        ...(isCustomer ? [{
+            key: "eit_status",
+            title: (
+                <Tooltip title="Statut e-facturation (PDP)">
+                    <CloudUploadOutlined />
+                </Tooltip>
+            ),
+            width: 60,
+            align: "center",
+            render: (value) => {
+                if (!value) return null;
+                const colors = {
+                    ACCEPTEE: "success", PAYEE: "success",
+                    REFUSEE: "error", LITIGE: "error", ERROR: "error",
+                    EN_PAIEMENT: "warning",
+                    QUALIFIEE: "processing", MISE_A_DISPO: "processing",
+                    DEPOSEE: "default", PENDING: "default",
+                };
+                const labels = {
+                    ACCEPTEE: "Acceptée", PAYEE: "Payée",
+                    REFUSEE: "Refusée", LITIGE: "Litige", ERROR: "Erreur",
+                    EN_PAIEMENT: "En paiement",
+                    QUALIFIEE: "Qualifiée", MISE_A_DISPO: "Dispo.",
+                    DEPOSEE: "Déposée", PENDING: "En attente",
+                };
+                return (
+                    <Tooltip title={`PDP : ${labels[value] ?? value}`}>
+                        <Tag color={colors[value] ?? "default"} style={{ fontSize: 10, padding: "0 4px" }}>
+                            {labels[value] ?? value}
+                        </Tag>
+                    </Tooltip>
+                );
+            },
+        }] : []),
+        {
+            key: "actions",
+            title: " ",
+            width: 50,
+            fixed: "right",
+            sortable: false,
+            render: (_, record) => {
+                if (record.eit_status) return null;
+                return (
+                    <CanAccess permission="invoices.edit">
+                        <Button
+                            type="link"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={(e) => { e.stopPropagation(); handleRowClick(record); }}
+                        />
+                    </CanAccess>
+                );
+            },
+        },
     ], [isCustomer, handleRowClick]);
 
     // Menu items pour le dropdown

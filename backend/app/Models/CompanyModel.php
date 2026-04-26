@@ -41,7 +41,9 @@ class CompanyModel extends BaseModel
         'cop_veryfi_api_key',
         'fk_usr_id_author',
         'fk_usr_id_updater',
-        'cop_url_site'
+        'cop_url_site',
+        'cop_siret',
+        'cop_country_code',
     ];
     /**
      * Relations

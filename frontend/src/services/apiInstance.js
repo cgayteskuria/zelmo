@@ -84,10 +84,11 @@ api.interceptors.response.use(
       }
 
       // Retourner un message d'erreur formaté
+      // Préférer data.error (message technique détaillé) sur data.message (message générique)
       return Promise.reject({
         status,
         data,
-        message: data?.message || "Une erreur est survenue",
+        message: data?.error || data?.message || "Une erreur est survenue",
       });
     } else if (error.request) {
       // Erreur réseau (pas de réponse du serveur)

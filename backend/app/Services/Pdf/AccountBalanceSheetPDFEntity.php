@@ -43,7 +43,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
         // Marges (gauche, haut, droite)
         $this->SetMargins(8, 25, 8);
         $this->SetAutoPageBreak(true, 25);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
 
         // Générer le PDF
         $this->generate();
@@ -67,7 +67,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
     public function Header()
     {
         $this->Ln(5);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $usableWidth = $this->getPageWidth() - $this->lMargin - $this->rMargin;
         $this->MultiCell($usableWidth / 3, 0, "Dossier : " . $this->companyName, '', 'L', false, 0);
         $this->MultiCell($usableWidth / 3, 0, "BILAN SYNTHETIQUE", '', 'C', false, 0);
@@ -104,7 +104,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
         $this->SetY($this->headerHeight);
 
         // En-têtes principales
-        $this->SetFont('helvetica', 'B', 9);
+        $this->SetFont('dejavusans', 'B', 9);
         $this->SetFillColor(240, 240, 240);
         $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(168, 168, 168)));
 
@@ -166,7 +166,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
 
         // Total I
         $this->Ln(3);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->Cell($this->tableColsW["col1"], $h, 'TOTAL I', 0, 0, 'L');
         $this->Cell($this->tableColsW["col2"], $h, $this->formatNumber($total1["totalBrut"]), 0, 0, 'R');
         $this->Cell($this->tableColsW["col3"], $h, $this->formatNumber($total1["totalAmort"]), 0, 0, 'R');
@@ -175,7 +175,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
         $this->Ln(5);
 
         // Actif circulant
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $s2_1 = $this->renderSection($actifData['actif_circulant'] ?? []);
         $this->Ln(5);
         $s2_2 = $this->renderSection($actifData['creances'] ?? []);
@@ -187,7 +187,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
 
         // Total II
         $this->Ln(3);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->Cell($this->tableColsW["col1"], $h, 'TOTAL II', 0, 0, 'L');
         $this->Cell($this->tableColsW["col2"], $h, $this->formatNumber($total2["totalBrut"]), 0, 0, 'R');
         $this->Cell($this->tableColsW["col3"], $h, $this->formatNumber($total2["totalAmort"]), 0, 0, 'R');
@@ -224,7 +224,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
 
         // Total I
         $this->Ln(3);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->setX($setX);
         $this->MultiCell($this->tableColsW["col6"], $h, 'TOTAL I', 0, 'L', false, 0);
         $this->MultiCell($this->tableColsW["col7"], $h, $this->formatNumber($total1["totalNet"]), 0, 'R', false, 0);
@@ -236,7 +236,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
 
         // Total III
         $this->Ln(3);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->setX($setX);
         $this->MultiCell($this->tableColsW["col6"], $h, 'TOTAL III', 0, 'L', false, 0);
         $this->MultiCell($this->tableColsW["col7"], $h, $this->formatNumber($total3["totalNet"]), 0, 'R', false, 0);
@@ -255,7 +255,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
     public function renderSection($data)
     {
         $h = 5;
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
 
         $totalBrut = 0;
         $totalAmort = 0;
@@ -321,7 +321,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
     public function renderPassifSection($data)
     {
         $h = 5;
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $setX = $this->getMargins()["left"] + $this->tableColsW["col1"] + $this->tableColsW["col2"] + $this->tableColsW["col3"] + $this->tableColsW["col4"] + $this->tableColsW["col5"];
 
         $totalNet = 0;
@@ -390,7 +390,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
      */
     private function generateTotauxGeneraux()
     {
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->SetFillColor(220, 220, 220);
         $h = 8;
         $this->setX($this->getMargins()["left"]);
@@ -444,7 +444,7 @@ class AccountBalanceSheetPDFEntity extends \TCPDF
     public function Footer()
     {
         $this->SetY(-15);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $this->Cell(0, 10, 'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, 0, 'C');
     }
 }

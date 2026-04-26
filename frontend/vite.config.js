@@ -4,6 +4,10 @@ import react from "@vitejs/plugin-react";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    include: /src\/.*\.[jt]sx?$/,
+    loader: 'jsx',
+  },
   server: {
     allowedHosts: ["skuria-sksuite.local", "cginvestors-sksuite.local"], // autorise ton API
     host: true, // si tu veux que Vite écoute sur toutes les interfaces

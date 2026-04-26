@@ -124,12 +124,12 @@ class BusinessDocumentPDF extends TCPDF
             $this->Image($logoPath, '', 5, '', $imageH, '', '', '', true, 300, '', false, false, 0);
         }
 
-        $this->setFont('helvetica', 'B', 12);
+        $this->setFont('dejavusans', 'B', 12);
         $this->MultiCell(0, 0, "{$this->documentData["document"]["typeLabel"]} {$documentHeader["number"]}", '', 'R', false, 1, 120, '10', true);
 
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->MultiCell(45, 4, "Page : " . $this->getPage() . " /", '', 'R', false, 0, 150, '', '', '', true);
-        $this->MultiCell(12, 4, $this->getAliasNbPages(), '', 'R', false, 1, '', '', '', '', true);
+        $this->MultiCell(12, 4, $this->getAliasNbPages(), '', 'R', false, 1, '', '', '', '', false);
         $this->bottomHeader = $this->GetY();
     }
 
@@ -164,7 +164,7 @@ class BusinessDocumentPDF extends TCPDF
 
         $this->SetTextColor(0, 0, 0);
         $this->setY(40);
-        $this->SetFont('helvetica', '', $front_size);
+        $this->SetFont('dejavusans', '', $front_size);
         $this->MultiCell($label_with, $line_height, 'Date', '', 'L', false, 0, '', '', true);
         $this->MultiCell($field_with, $line_height, ' : ' . date("d/m/Y", strtotime($documentHeader["date"])), '', 'L', false, 1, '', '', true);
 
@@ -194,10 +194,10 @@ class BusinessDocumentPDF extends TCPDF
         $this->RoundedRect(10, 39, 90, 33, 2.50, '1000');
 
         $this->setXY(110, 40);
-        $this->SetFont('helvetica', 'B', $front_size + 1);
+        $this->SetFont('dejavusans', 'B', $front_size + 1);
         $this->MultiCell(0, 0, $documentHeader["ptr_name"], '', 'L', false, 1, '', '', true);
         $this->setX(110);
-        $this->SetFont('helvetica', '', $front_size + 1);
+        $this->SetFont('dejavusans', '', $front_size + 1);
         $this->MultiCell(0, 0, $ptrFullAdress, '', 'L', false, 1, '', '', true);
     }
 
@@ -288,14 +288,14 @@ class BusinessDocumentPDF extends TCPDF
             switch ($line["type"]) {
                 case 1: // Titre
                     $this->setCellMargins(0, 0, 0, 1);
-                    $this->SetFont('helvetica', 'B', 9);
+                    $this->SetFont('dejavusans', 'B', 9);
                     $this->SetFillColorArray(self::COLOR_GRAY);
                     $this->MultiCell(0, $stringHeight, $html, '', 'L', true, 1, '', '', true, 0, true, true, $stringHeight, $valign);
                     break;
 
                 case 2: // Sous-total
                     $this->setCellMargins(0, 0, 0, 1);
-                    $this->SetFont('helvetica', 'B', 9);
+                    $this->SetFont('dejavusans', 'B', 9);
                     $this->SetFillColorArray(self::COLOR_GRAY);
                     $this->MultiCell($colsW["sumColsW"] - $colsW["mtht"], $stringHeight, $html, '', 'L', true, 0, '', '', true, 0, true, true, $stringHeight, $valign);
                     $this->MultiCell($colsW["mtht"], $stringHeight, $this->formatCurrency($line["mtht"]), '', 'R', true, 1, '', '', true, 0, true, $stringHeight, $valign);
@@ -303,7 +303,7 @@ class BusinessDocumentPDF extends TCPDF
 
                 default: // Ligne normale
                     $this->setCellMargins(0, 0, 0, 1);
-                    $this->SetFont('helvetica', '', 9);
+                    $this->SetFont('dejavusans', '', 9);
 
                     // Ligne de séparation
                     if ($separatorLine) {
@@ -426,7 +426,7 @@ class BusinessDocumentPDF extends TCPDF
         $lineStyle = array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => $this->lineColor);
         $this->SetLineStyle($lineStyle);
         $this->setY($topY);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->setCellMargins(0, 0, 0, 0);
         $this->SetFillColor(248, 248, 248);
 
@@ -481,7 +481,7 @@ class BusinessDocumentPDF extends TCPDF
         $this->setPage($this->getNumPages());
         $this->SetY(self::BOTTOM_FRAMES_LAST_PAGE + 0.5);
 
-        $this->SetFont('helvetica', '', 6);
+        $this->SetFont('dejavusans', '', 6);
         $this->setCellPaddings(0, 0, 0, 0);
         $this->setCellMargins(0, 0, 0, 0);
         $txt = $this->documentData["sale"]["conf"]["sco_sale_legal_notice"] ?? '';
@@ -501,25 +501,25 @@ class BusinessDocumentPDF extends TCPDF
             return;
         }
 
-        $this->SetFont('helvetica', 'B', 8);
+        $this->SetFont('dejavusans', 'B', 8);
         $this->setCellPaddings(0, 0, 0, 0);
         $this->Cell(0, 0, 'Nos coordonnées bancaires :', 0, 1, 'L');
         $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(102, 102, 102)));
 
         $this->setCellPaddings(0, 0, 0, 1);
-        $this->SetFont('helvetica', '', 6);
-        $this->MultiCell(14, 0, "Code banque", 'LR', 'C', true, 0);
-        $this->MultiCell(14, 0, "Code guichet", 'R', 'C', false, 0);
+        $this->SetFont('dejavusans', '', 6);
+        $this->MultiCell(16, 0, "Code banque", 'LR', 'C', true, 0);
+        $this->MultiCell(16, 0, "Code guichet", 'R', 'C', false, 0);
         $this->MultiCell(24, 0, "Numéro de compte", 'R', 'C', false, 0);
         $this->MultiCell(10, 0, "Clé", 'R', 'C', false, 1);
 
-        $this->SetFont('helvetica', '', 8);
-        $this->MultiCell(14, 0, $bankInfo['bts_bank_code'] ?? '', 'LR', 'C', true, 0);
-        $this->MultiCell(14, 0, $bankInfo['bts_sort_code'] ?? '', 'R', 'C', false, 0);
+        $this->SetFont('dejavusans', '', 8);
+        $this->MultiCell(16, 0, $bankInfo['bts_bank_code'] ?? '', 'LR', 'C', true, 0);
+        $this->MultiCell(16, 0, $bankInfo['bts_sort_code'] ?? '', 'R', 'C', false, 0);
         $this->MultiCell(24, 0, $bankInfo['bts_account_nbr'] ?? '', 'R', 'C', false, 0);
         $this->MultiCell(10, 0, $bankInfo['bts_bban_key'] ?? '', 'R', 'C', false, 1);
 
-        $this->SetFont('helvetica', '', 6);
+        $this->SetFont('dejavusans', '', 6);
         $this->setCellPaddings(0, 0, 0, 0);
         $this->MultiCell(62, 0, "Banque : " . ($bankInfo['bts_label'] ?? ''), '', 'L', false, 1);
         $this->MultiCell(62, 0, "IBAN : " . ($bankInfo['bts_iban'] ?? ''), '', 'L', false, 1);
@@ -553,7 +553,7 @@ class BusinessDocumentPDF extends TCPDF
 
         $this->SetY($posY);
         $this->SetX($posX);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->setCellPaddings(1, 2, 1, 2);
 
         $this->SetFillColorArray(self::COLOR_GRAY);
@@ -578,7 +578,7 @@ class BusinessDocumentPDF extends TCPDF
             }
         }
 
-        $this->SetFont('helvetica', 'B', 11);
+        $this->SetFont('dejavusans', 'B', 11);
         $this->SetFillColorArray(array(223, 223, 223));
         $this->MultiCell($label_with, $line_height, 'Total TTC', '', 'L', true, 0, $posX, '', true, '', '', '', $line_height, 'M');
         $this->MultiCell($colsW["mtht"], $line_height, $totalTTC . " €", '', 'R', true, 1, '', '', true, '', '', '', $line_height, 'M');
@@ -614,18 +614,18 @@ class BusinessDocumentPDF extends TCPDF
         $this->SetY($posY);
         $this->SetX($posX);
 
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $this->setCellPaddings(0, 0, 0, 0);
         $this->setCellMargins(0, 0, 0, 0);
         $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(102, 102, 102)));
         $this->MultiCell(0, 5, 'Règlement déjà effectués :', 0, 'L', false, 1, $posX, $posY);
 
-        $this->SetFont('helvetica', 'B', 7);
+        $this->SetFont('dejavusans', 'B', 7);
         $this->MultiCell(20, $line_height, "Date", 'R', 'C', false, 0, $posX);
         $this->MultiCell(25, $line_height, "Montant", 'R', 'C', false, 0);
         $this->MultiCell(30, $line_height, "Mode", '', 'C', false, 1);
 
-        $this->SetFont('helvetica', '', 7);
+        $this->SetFont('dejavusans', '', 7);
         $this->setCellPaddings(1, 0, 1, 0);
         foreach ($this->documentData["document"]["payment"] as $payment) {
             $this->MultiCell(20, $line_height, date("d/m/Y", strtotime($payment['date'])), 'R', 'C', false, 0, $posX);
@@ -660,7 +660,7 @@ class BusinessDocumentPDF extends TCPDF
             $this->SetY($posY);
             $this->SetX($posX);
 
-            $this->SetFont('helvetica', '', 8);
+            $this->SetFont('dejavusans', '', 8);
             $this->setCellPaddings(0, 0, 0, 0);
             $this->setCellMargins(0, 0, 0, 0);
             $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(102, 102, 102)));
@@ -677,7 +677,7 @@ class BusinessDocumentPDF extends TCPDF
     {
         $companyInfo = $this->documentData["company"]["info"];
         $this->setCellPaddings(0, 0, 0, 0);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
 
         $footerLine1 = "{$companyInfo["cop_label"]} - {$companyInfo["cop_address"]} {$companyInfo["cop_zip"]} {$companyInfo["cop_city"]} - Tél : {$companyInfo["cop_phone"]} ";
         $footerLine2 = "{$companyInfo["cop_legal_status"]} au capital de {$companyInfo["cop_capital"]} Euros - SIRET {$companyInfo["cop_registration_code"]} - APE : {$companyInfo["cop_naf_code"]} - RCS : {$companyInfo["cop_rcs"]} - TVA INTRA : {$companyInfo["cop_tva_code"]}";

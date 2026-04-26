@@ -42,7 +42,7 @@ class AccountCentralizingPDFEntity extends \TCPDF
         // Marges (gauche, haut, droite)
         $this->SetMargins(10, 25, 10);
         $this->SetAutoPageBreak(true, 25);
-        $this->SetFont('helvetica', '', 9);
+        $this->SetFont('dejavusans', '', 9);
 
         // Générer le PDF
         $this->generate();
@@ -66,7 +66,7 @@ class AccountCentralizingPDFEntity extends \TCPDF
     public function Header()
     {
         $this->Ln(5);
-        $this->SetFont('helvetica', '', 10);
+        $this->SetFont('dejavusans', '', 10);
         $this->MultiCell(63, 0, "Dossier : " . $this->companyName, '', 'L', false, 0);
         $this->MultiCell(64, 0, "CENTRALISATEUR", '', 'C', false, 0);
         $this->MultiCell(63, 0, "Le " . date('d/m/Y'), '', 'R', false, 1);
@@ -80,7 +80,7 @@ class AccountCentralizingPDFEntity extends \TCPDF
             $periodText = 'Période du ' . $startDate . ' au ' . $endDate;
             $this->MultiCell(0, 0, $periodText, '', 'L', false, 1);
 
-            $this->SetFont('helvetica', '', 10);
+            $this->SetFont('dejavusans', '', 10);
             $filterText = '';
 
             if (!empty($this->filters['journal_name'])) {
@@ -96,13 +96,13 @@ class AccountCentralizingPDFEntity extends \TCPDF
         $this->colsWidth = [20, 40, 70, 30, 30];
         $h = 10;
         $this->SetFillColor(200, 200, 200);
-        $this->SetFont('helvetica', 'B', 7);
+        $this->SetFont('dejavusans', 'B', 7);
         $this->MultiCell($this->colsWidth[0], $h, "Code Journal", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell($this->colsWidth[1], $h, "Journal", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell($this->colsWidth[2], $h, "Mois", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell($this->colsWidth[3], $h, "Cumul\nDébit", 1, 'C', true, 0, '', '', true, 0, false, true, $h, 'M');
         $this->MultiCell($this->colsWidth[4], $h, "Cumul\nCrédit", 1, 'C', true, 1, '', '', true, 0, false, true, $h, 'M');
-        $this->SetFont('helvetica', '', 7);
+        $this->SetFont('dejavusans', '', 7);
         $this->headerHeight = $this->getPage() == 1 ? $this->GetY() : $this->GetY() + 7;
     }
 
@@ -131,10 +131,10 @@ class AccountCentralizingPDFEntity extends \TCPDF
         $grandTotalCredit = 0;
 
         foreach ($this->journalData as $journalCode => $journalData) {
-            $this->SetFont('helvetica', 'B', 8);
+            $this->SetFont('dejavusans', 'B', 8);
             $w = $this->colsWidth[0] + $this->colsWidth[1] + $this->colsWidth[2];
             $this->MultiCell($w, $h, $journalData['name'] . " ({$journalCode})", 0, 'L', false, 1, '', '', true, 0, false, true, $h, 'B');
-            $this->SetFont('helvetica', '', 7);
+            $this->SetFont('dejavusans', '', 7);
 
             foreach ($journalData['months'] as $monthKey => $monthData) {
                 $monthName = $this->formatMonthName($monthKey);
@@ -153,7 +153,7 @@ class AccountCentralizingPDFEntity extends \TCPDF
 
         // Total général
         $this->Ln(10);
-        $this->SetFont('helvetica', 'B', 10);
+        $this->SetFont('dejavusans', 'B', 10);
         $this->SetFillColor(180, 180, 180);
         $w = $this->colsWidth[0] + $this->colsWidth[1] + $this->colsWidth[2];
         $this->Cell($w, 6, 'TOTAL GÉNÉRAL', 1, 0, 'L', true);
@@ -190,13 +190,13 @@ class AccountCentralizingPDFEntity extends \TCPDF
      */
     private function displayJournalSubtotal($journalCode)
     {
-        $this->SetFont('helvetica', 'B', 7);
+        $this->SetFont('dejavusans', 'B', 7);
         $this->SetFillColor(240, 240, 240);
         $w = $this->colsWidth[0] + $this->colsWidth[1] + $this->colsWidth[2];
         $this->Cell($w, 6, 'TOTAL JOURNAL ' . $journalCode, 1, 0, 'L', true);
         $this->Cell($this->colsWidth[3], 6, number_format($this->journalData[$journalCode]['total_debit'], 2, ',', ' '), 1, 0, 'R', true);
         $this->Cell($this->colsWidth[4], 6, number_format($this->journalData[$journalCode]['total_credit'], 2, ',', ' '), 1, 0, 'R', true);
-        $this->SetFont('helvetica', '', 6.5);
+        $this->SetFont('dejavusans', '', 6.5);
         $this->Ln(3);
     }
 
@@ -206,7 +206,7 @@ class AccountCentralizingPDFEntity extends \TCPDF
     public function Footer()
     {
         $this->SetY(-15);
-        $this->SetFont('helvetica', '', 8);
+        $this->SetFont('dejavusans', '', 8);
         $this->Cell(0, 10, 'Page ' . $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, 0, 'C');
     }
 }

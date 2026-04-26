@@ -199,6 +199,7 @@ class ApiAccountBankReconciliationController extends Controller
             })
             ->select([
                 'aml.aml_id',
+                'aml.fk_amo_id',
                 'ajl.ajl_code',
                 'aml.aml_date',
                 'aml.aml_label_entry',

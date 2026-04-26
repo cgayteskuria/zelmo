@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Space, Spin, Table, InputNumber, Tag, Alert } from "antd";
 import { message } from '../../utils/antdStatic';
-import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, LockOutlined, PlusOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, LockOutlined, PlusOutlined, LeftOutlined, RightOutlined, RetweetOutlined, ExportOutlined } from "@ant-design/icons";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useListNavigation } from "../../hooks/useListNavigation";
 import dayjs from "dayjs";
@@ -15,6 +15,7 @@ import AccountSelect from "../../components/select/AccountSelect";
 import TaxSelect from "../../components/select/TaxSelect";
 import { formatStatus } from "../../configs/AccountConfig";
 import { usePermission } from "../../hooks/usePermission";
+import { useVisibilityRefresh } from "../../hooks/useVisibilityRefresh";
 
 /**
  * Composant AccountMove
@@ -168,7 +169,7 @@ export default function AccountMove() {
     /**
      * Instance du formulaire CRUD
      */
-    const { submit, remove, loading, loadError, entity } = useEntityForm({
+    const { submit, remove, loading, loadError, entity, reload } = useEntityForm({
         api: accountMovesApi,
         entityId: amoId,
         idField: 'amo_id',
@@ -179,6 +180,13 @@ export default function AccountMove() {
         onDelete: onDeleteCallback,
         onDataLoaded: onDataLoadedCallback,
     });
+
+    // Rafraîchissement silencieux à la reprise de focus (lettrage/pointage modifiés depuis un autre onglet)
+    // Uniquement en mode lecture : formDisabled garantit qu'aucune saisie n'est en cours
+    useVisibilityRefresh(
+        () => { if (amoId) reload(false); },
+        { enabled: !!amoId && formDisabled }
+    );
 
     // Fonction helper pour formater les dates des valeurs du formulaire
     const formatFormDates = useCallback((values) => ({
@@ -211,14 +219,15 @@ export default function AccountMove() {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Recalculer les totaux à chaque changement de lignes
+    // Arrondi à 2 décimales pour éviter la dérive floating-point (ex: 330.20-330.19 = 0.009999...)
     useEffect(() => {
         let debit = 0, credit = 0;
         moveLines.forEach(l => {
             debit  += parseFloat(l.aml_debit)  || 0;
             credit += parseFloat(l.aml_credit) || 0;
         });
-        setTotalDebit(debit);
-        setTotalCredit(credit);
+        setTotalDebit(Math.round(debit  * 100) / 100);
+        setTotalCredit(Math.round(credit * 100) / 100);
     }, [moveLines]);
 
     // Ajouter une ligne
@@ -416,10 +425,10 @@ export default function AccountMove() {
             return false;
         }
 
-        // Vérifier l'équilibre
-        const diff = Math.abs(totalDebit - totalCredit);
-        if (diff > 0.01) {
-            message.error("Les mouvements ne sont pas équilibrés");
+        // Vérifier l'équilibre (strict : tolérance 0, arrondi de la différence pour éviter le floating-point)
+        const diff = Math.round(Math.abs(totalDebit - totalCredit) * 100) / 100;
+        if (diff >= 0.01) {
+            message.error(`Écriture déséquilibrée — Débit : ${totalDebit.toFixed(2)}, Crédit : ${totalCredit.toFixed(2)}, Différence : ${diff.toFixed(2)}`);
             return false;
         }
 
@@ -485,8 +494,8 @@ export default function AccountMove() {
             message.success('Écriture validée');
             navigate('/account-moves');
         } catch (error) {
-            console.error('Erreur de validation:', error);
-            message.error('Veuillez corriger les erreurs du formulaire avant de continuer');
+            // useEntityForm.submit a déjà affiché le message d'erreur détaillé via message.error
+            // On ne ré-affiche pas de message générique pour ne pas masquer le détail
         }
     }, [form, formatFormDates, submit, moveLines, validateMove, navigate]);
 
@@ -547,8 +556,29 @@ export default function AccountMove() {
             render: (value, record) => {
                 if (record.isAutoTaxLine) {
                     return (
-                        <span style={{ color: '#aaa', paddingLeft: 16 }}>
-                            {record.acc_code} — {record.acc_label}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {/* Connecteur arborescent └─→ */}
+                            <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: '#d0aff5',
+                                fontSize: 13,
+                                lineHeight: 1,
+                                userSelect: 'none',
+                                flexShrink: 0,
+                            }}>
+                                <svg width="20" height="18" viewBox="0 0 20 18" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                                    {/* Ligne verticale */}
+                                    <line x1="5" y1="0" x2="5" y2="11" stroke="#d9d9d9" strokeWidth="1.5" strokeLinecap="round" />
+                                    {/* Ligne horizontale */}
+                                    <line x1="5" y1="11" x2="14" y2="11" stroke="#d9d9d9" strokeWidth="1.5" strokeLinecap="round" />
+                                    {/* Pointe de flèche */}
+                                    <polyline points="11,7 15,11 11,15" stroke="#d9d9d9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                                </svg>
+                            </span>
+                            <span style={{ color: '#8c8c8c', fontStyle: 'italic', fontSize: '0.92em' }}>
+                                {record.acc_code} — {record.acc_label}
+                            </span>
                         </span>
                     );
                 }
@@ -715,7 +745,7 @@ export default function AccountMove() {
 
     const { hasNav, hasPrev, hasNext, goToPrev, goToNext, position } = useListNavigation();
 
-    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+    const isBalanced = Math.round(Math.abs(totalDebit - totalCredit) * 100) / 100 === 0;
     const canDelete = isEditable;
 
     const DOCUMENT_TYPE_CONFIG = {
@@ -726,6 +756,14 @@ export default function AccountMove() {
         entry:       { label: 'Écriture comptable',   color: 'default'  },
     };
 
+    const sourceUrl = entity?.fk_inv_id
+        ? (['out_invoice', 'out_refund'].includes(documentType)
+            ? `/customer-invoices/${entity.fk_inv_id}`
+            : `/supplier-invoices/${entity.fk_inv_id}`)
+        : entity?.fk_exr_id
+            ? `/expense-reports/${entity.fk_exr_id}`
+            : null;
+
     return (
         <PageContainer
             title={
@@ -735,6 +773,13 @@ export default function AccountMove() {
                         <Tag color={DOCUMENT_TYPE_CONFIG[documentType].color}>
                             {DOCUMENT_TYPE_CONFIG[documentType].label}
                         </Tag>
+                    )}
+                    {sourceUrl && (
+                        <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                            <Button size="small" icon={<ExportOutlined />}>
+                                Ouvrir la source
+                            </Button>
+                        </a>
                     )}
                 </Space>
             }
@@ -958,7 +1003,11 @@ export default function AccountMove() {
                                         pagination={false}
                                         size="small"
                                         bordered
-                                        className={!formDisabled ? "no-padding-table" : ""}                                       
+                                        className={!formDisabled ? "no-padding-table" : ""}
+                                        rowClassName={(record) => record.isAutoTaxLine ? 'move-line-tva-child' : ''}
+                                        onRow={(record) => record.isAutoTaxLine ? {
+                                            style: { backgroundColor: '#faf7ff' }
+                                        } : {}}                                       
                                         summary={() => (
                                             <Table.Summary fixed>
                                                <Table.Summary.Row style={{ fontWeight: 'bold', backgroundColor: '#fafafa' }}>

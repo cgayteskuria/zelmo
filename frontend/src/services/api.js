@@ -16,6 +16,7 @@ export * from "./apiInvoiceOcr.js";
 export * from "./apiExpenses.js";
 export * from "./apiTickets.js";
 export * from "./apiProspect.js";
+export * from "./apiEInvoicing.js";
 export const dashboardApi = {
     activity: () => api.get("/dashboard/activity"),
 };
@@ -185,6 +186,10 @@ export const partnersApi = {
 
   // Contacts liés au partenaire
   getContacts: (partnerId) => api.get(`/partners/${partnerId}/contacts`),
+};
+
+export const countriesApi = {
+  list: () => api.get('/countries'),
 };
 
 export const customersApi = {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react';
-import { Table, Button, Checkbox, Space, Row, Col, Card, Statistic, Modal, Spin, Tag, Tabs } from 'antd';
-import { message } from '../../utils/antdStatic';
+import { Table, Button, Checkbox, Space, Row, Col, Card, Statistic, Spin, Tag, Tabs } from 'antd';
+import { message, modal } from '../../utils/antdStatic';
 import { SaveOutlined, DeleteOutlined, ArrowLeftOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import PageContainer from "../../components/common/PageContainer";
 import { useParams, useNavigate } from "react-router-dom";
@@ -128,33 +128,36 @@ export default function AccountBankReconciliation() {
         }
     };
 
-    // Sauvegarder le pointage
-    const handleSave = async () => {
-        const isBalanced = Math.abs(gap) == 0;
+    // forcedGap / forcedKeys : valeurs calculées hors closure pour éviter les captures périmées depuis setTimeout
+    const handleSave = async (forcedGap, forcedKeys) => {
+        const currentGap  = forcedGap !== undefined ? forcedGap  : gap;
+        const currentKeys = forcedKeys !== undefined ? forcedKeys : selectedLines;
+        const isBalanced  = Math.abs(currentGap) < 0.01;
 
         if (!isBalanced) {
-            Modal.confirm({
+            modal.confirm({
                 title: 'Rapprochement non équilibré',
-                content: `Le rapprochement bancaire n'est pas équilibré (écart de ${gap.toFixed(2)} €). Confirmez-vous l'enregistrement ?`,
+                content: `Le rapprochement bancaire n'est pas équilibré (écart de ${currentGap.toFixed(2)} €). Confirmez-vous l'enregistrement ?`,
                 okText: 'Confirmer',
                 cancelText: 'Annuler',
-                onOk: () => submitSave(),
+                onOk: () => submitSave(currentKeys),
             });
         } else {
-            Modal.confirm({
+            modal.confirm({
                 title: 'Rapprochement équilibré',
                 content: 'Le rapprochement est équilibré. Confirmez-vous l\'enregistrement ?',
                 okText: 'Confirmer',
                 cancelText: 'Annuler',
-                onOk: () => submitSave(),
+                onOk: () => submitSave(currentKeys),
             });
         }
     };
 
-    const submitSave = async () => {
+    const submitSave = async (forcedKeys) => {
+        const keysToSave = forcedKeys !== undefined ? forcedKeys : selectedLines;
         setLoading(true);
         try {
-            const response = await accountBankReconciliationsApi.updatePointing(id, selectedLines);
+            const response = await accountBankReconciliationsApi.updatePointing(id, keysToSave);
 
             if (response.success) {
                 message.success(response.message);
@@ -169,7 +172,7 @@ export default function AccountBankReconciliation() {
 
     // Supprimer le rapprochement
     const handleDelete = () => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Supprimer le rapprochement',
             content: 'Êtes-vous sûr de vouloir supprimer ce rapprochement ? Cette action est irréversible.',
             okText: 'Supprimer',
@@ -191,7 +194,12 @@ export default function AccountBankReconciliation() {
 
     // Colonnes du tableau
     const columns = [
-        { title: 'N° Mvt', dataIndex: 'aml_id', key: 'aml_id', width: 100, },
+        {
+            title: 'N° Mvt', dataIndex: 'fk_amo_id', key: 'fk_amo_id', width: 100,
+            render: (amoId) => amoId
+                ? <a href={`/account-moves/${amoId}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>{amoId}</a>
+                : '-',
+        },
         { title: 'Journal', dataIndex: 'ajl_code', key: 'ajl_code', width: 100, },
         {
             title: 'Date', dataIndex: 'aml_date', key: 'aml_date', width: 110,
@@ -230,10 +238,10 @@ export default function AccountBankReconciliation() {
         onChange: (selectedRowKeys) => {
             setSelectedLines(selectedRowKeys);
 
-            const { gap } = computeTotalsFromKeys(selectedRowKeys);
+            const { gap: computedGap } = computeTotalsFromKeys(selectedRowKeys);
 
             const allSelected = selectableCount === selectedRowKeys.length;
-            const isBalanced = Math.abs(gap) < 0.01;
+            const isBalanced = Math.abs(computedGap) < 0.01;
 
             // reset si on revient en arrière
             if (!allSelected) {
@@ -241,14 +249,12 @@ export default function AccountBankReconciliation() {
                 return;
             }
 
-            // ouvre UNE seule fois
+            // ouvre UNE seule fois — passe computedGap + selectedRowKeys pour éviter les stale closures
             if (allSelected && isBalanced && !modalOpenedRef.current) {
-
                 modalOpenedRef.current = true;
-
                 // petit délai = laisse React finir le render
                 setTimeout(() => {
-                    handleSave();
+                    handleSave(computedGap, selectedRowKeys);
                 }, 0);
             }
         },
@@ -354,7 +360,7 @@ export default function AccountBankReconciliation() {
                                                 <Button
                                                     type="primary"
                                                     icon={<SaveOutlined />}
-                                                    onClick={handleSave}
+                                                    onClick={() => handleSave()}
                                                     loading={loading}
                                                 >
                                                     Enregistrer

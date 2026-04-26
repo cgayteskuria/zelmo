@@ -10,6 +10,7 @@ use App\Services\PasswordResetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -94,6 +95,16 @@ class AuthController extends Controller
         }
 
         $user->resetLoginAttempts();
+
+        DB::table('logs_log')->insert([
+            'log_created'     => now(),
+            'log_updated'     => now(),
+            'fk_usr_id'       => $user->usr_id,
+            'log_ip_address'  => $request->ip(),
+            'log_user_agent'  => $request->userAgent(),
+            'log_action'      => 'login',
+            'log_details'     => json_encode(['login' => $user->usr_login]),
+        ]);
 
         // Créer un token d'authentification
         $token = $user->createToken('auth-token')->plainTextToken;

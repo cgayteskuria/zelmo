@@ -392,7 +392,11 @@ class ApiAccountMoveController extends Controller
             // fk_inv_id / fk_pay_id / fk_exr_id intentionnellement non copiés
         ];
 
-        $linesData = $original->lines->map(fn($line) => [
+        // Indexer les aml_id originaux pour reconstruire parent_index
+        $lines = $original->lines->values();
+        $amlIdToIndex = $lines->mapWithKeys(fn($line, $idx) => [$line->aml_id => $idx])->toArray();
+
+        $linesData = $lines->map(fn($line, $idx) => [
             'fk_acc_id'       => $line->fk_acc_id,
             'aml_label'       => $line->aml_label,
             'aml_label_entry' => $line->aml_label_entry,
@@ -400,6 +404,10 @@ class ApiAccountMoveController extends Controller
             'aml_debit'       => $line->aml_debit,
             'aml_credit'      => $line->aml_credit,
             'fk_tax_id'       => $line->fk_tax_id,
+            // Conserver le lien TVA ↔ charge/produit via parent_index
+            'parent_index'    => $line->fk_parent_aml_id !== null && isset($amlIdToIndex[$line->fk_parent_aml_id])
+                                  ? $amlIdToIndex[$line->fk_parent_aml_id]
+                                  : null,
         ])->toArray();
 
         try {

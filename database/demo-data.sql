@@ -4,11 +4,13 @@ SET time_zone = "+00:00";
 SET FOREIGN_KEY_CHECKS = 0;
 
 
-REPLACE INTO `document_doc` VALUES (1, '2026-04-21 13:52:35', '2026-04-21 13:52:35', 84, 84, 'logo.png', '1776786755_large.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-REPLACE INTO `document_doc` VALUES (2, '2026-04-21 13:52:42', '2026-04-21 13:52:42', 84, 84, 'logo.png', '1776786762_printable.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-REPLACE INTO `document_doc` VALUES (3, '2026-04-21 13:52:49', '2026-04-21 13:52:49', 84, 84, 'favicon.png', '1776786769_square.png', 'image/png', 113930, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
-REPLACE INTO `company_cop` VALUES (1, NULL, '2026-04-21 13:52:49', NULL, 84, 'BACK TO THE FUTUR Cie', '1 Place de l\'Horloge', '75008', 'Paris', '01 02 03 04 05', NULL, '123 456 789', 'SAS', 'Paris', '500 000', '5829C', 'FR12345695401', -1, 1, 3, 2, '/company/cgv.pdf', 27, 28, 6, '- Veuillez saisir votre réponse au-dessus de cette ligne -', 'demo_webhook_token_replace_me', '', '', '');
+INSERT INTO `document_doc` (`doc_id`, `doc_created`, `doc_updated`, `fk_usr_id_author`, `fk_usr_id_updater`, `doc_filename`, `doc_securefilename`, `doc_filetype`, `doc_filesize`, `doc_filepath`, `doc_filecontent`, `fk_inv_id`, `fk_ord_id`, `fk_por_id`, `fk_con_id`, `fk_tka_id`, `fk_aba_id`, `fk_aex_id`, `fk_ptr_id`, `fk_aie_id`, `fk_che_id`, `fk_abr_id`, `fk_dln_id`, `fk_exp_id`, `fk_vhc_id`, `fk_opp_id`) VALUES
+(4, '2026-04-21 15:17:42', '2026-04-21 15:17:42', 84, 84, 'logo.png', '1776791862_large.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(5, '2026-04-21 15:18:23', '2026-04-21 15:18:23', 84, 84, 'favicon.png', '1776791903_square.png', 'image/png', 113930, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, '2026-04-21 15:18:27', '2026-04-21 15:18:27', 84, 84, 'logo.png', '1776791907_printable.png', 'image/png', 103075, 'company/logos', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+REPLACE INTO `company_cop` VALUES (1, NULL, '2026-04-21 13:52:49', NULL, 84, 'ZELMO DEMO', '1 Place de l\'Horloge', '75008', 'Paris', 'FR', '01 02 03 04 05', NULL, '123 456 789', 'SAS', 'Paris', '500 000', '5829C', 'FR12345695401', -1, 4, 5, 6, '/company/cgv.pdf', 27, 28, 6, '- Veuillez saisir votre réponse au-dessus de cette ligne -', 'demo_webhook_token_replace_me', '', '', '');
 
 
 INSERT INTO `contact_ctc` (`ctc_id`, `ctc_created`, `ctc_updated`, `fk_usr_id_author`, `fk_usr_id_updater`, `fk_ptr_id`, `ctc_firstname`, `ctc_lastname`, `ctc_email`, `ctc_phone`, `ctc_mobile`, `ctc_job_title`, `ctc_receive_invoice`, `ctc_receive_saleorder`, `ctc_is_active`, `ctc_Linkedin_url`) VALUES
@@ -2129,5 +2131,32 @@ REPLACE INTO `expense_lines_exl` VALUES (162, '2026-02-15 15:24:59', '2026-02-15
 REPLACE INTO `expense_lines_exl` VALUES (176, '2026-02-15 15:59:52', '2026-02-15 15:59:52', 154, 24, 10.00, 22.73, 2.27, 25.00);
 REPLACE INTO `expense_lines_exl` VALUES (181, '2026-02-15 16:06:29', '2026-02-15 16:06:29', 159, 23, 20.00, 165.83, 33.17, 199.00);
 
+
+-- Synchroniser les colonnes *_prttype (enum 'conso'/'service') depuis le produit lié
+-- Nécessaire car les anciennes valeurs entières (0/1) ont été insérées en mode non-strict
+UPDATE `invoice_line_inl` inl
+  JOIN `product_prt` prt ON inl.fk_prt_id = prt.prt_id
+SET inl.inl_prttype = prt.prt_type
+WHERE inl.fk_prt_id IS NOT NULL;
+
+UPDATE `contract_line_col` col
+  JOIN `product_prt` prt ON col.fk_prt_id = prt.prt_id
+SET col.col_prttype = prt.prt_type
+WHERE col.fk_prt_id IS NOT NULL;
+
+UPDATE `purchase_order_line_pol` pol
+  JOIN `product_prt` prt ON pol.fk_prt_id = prt.prt_id
+SET pol.pol_prttype = prt.prt_type
+WHERE pol.fk_prt_id IS NOT NULL;
+
+UPDATE `sale_order_line_orl` orl
+  JOIN `product_prt` prt ON orl.fk_prt_id = prt.prt_id
+SET orl.orl_prttype = prt.prt_type
+WHERE orl.fk_prt_id IS NOT NULL;
+
+UPDATE `delivery_note_line_dnl` dnl
+  JOIN `product_prt` prt ON dnl.fk_prt_id = prt.prt_id
+SET dnl.dnl_prttype = prt.prt_type
+WHERE dnl.fk_prt_id IS NOT NULL;
 
 SET FOREIGN_KEY_CHECKS = 1;

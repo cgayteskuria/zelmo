@@ -19,6 +19,9 @@ class PartnerModel extends BaseModel
     // Protéger la clé primaire
     protected $guarded = ['ptr_id'];
 
+    // Champs additionnels pour la facturation électronique
+    // ptr_siret, ptr_country_code ajoutés via ALTER TABLE dans schema.sql
+
     /**
      * Champs castés
      */

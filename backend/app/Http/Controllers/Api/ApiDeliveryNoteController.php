@@ -745,6 +745,7 @@ class ApiDeliveryNoteController
             $line->fk_prt_id = $lineData['fk_prt_id'] ?? null;
             $line->dnl_prtlib = $lineData['dnl_prtlib'] ?? '';
             $line->dnl_prtdesc = $lineData['dnl_prtdesc'] ?? null;
+            $line->dnl_prttype = $lineData['prt_type'] ?? null;
             $line->dnl_qty = $lineData['dnl_qty'] ?? 0;
             $line->dnl_lot_number = $lineData['dnl_lot_number'] ?? null;
             $line->fk_orl_id = $lineData['fk_orl_id'] ?? null;
@@ -947,6 +948,7 @@ class ApiDeliveryNoteController
                 $dnlLine->fk_prt_id = $line->fk_prt_id;
                 $dnlLine->dnl_prtlib = $line->orl_prtlib;
                 $dnlLine->dnl_prtdesc = $line->orl_prtdesc;
+                $dnlLine->dnl_prttype = $line->orl_prttype;
                 $dnlLine->dnl_qty = $line->qty_remaining;
                 $dnlLine->fk_orl_id = $line->orl_id;
                 $dnlLine->save();
@@ -1039,6 +1041,7 @@ class ApiDeliveryNoteController
                 $dnlLine->fk_prt_id = $line->fk_prt_id;
                 $dnlLine->dnl_prtlib = $line->pol_prtlib;
                 $dnlLine->dnl_prtdesc = $line->pol_prtdesc;
+                $dnlLine->dnl_prttype = $line->pol_prttype;
                 $dnlLine->dnl_qty = $line->qty_remaining;
                 $dnlLine->fk_pol_id = $line->pol_id;
                 $dnlLine->save();

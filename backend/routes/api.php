@@ -73,6 +73,9 @@ use App\Http\Controllers\Api\ApiTimeReportController;
 use App\Http\Controllers\Api\ApiSequenceController;
 use App\Http\Controllers\Api\ApiAccountVatDeclarationController;
 use App\Http\Controllers\Api\ApiAccountVatBoxController;
+use App\Http\Controllers\Api\ApiEInvoicingController;
+use App\Http\Controllers\Api\ApiCountryController;
+use App\Http\Controllers\Webhooks\EInvoicingWebhookController;
 
 require base_path('routes/apiExpense.php');
 require base_path('routes/apiPartners.php');
@@ -90,6 +93,9 @@ Route::get('/company/public-branding', [ApiCompanyController::class, 'publicBran
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
+    // Référentiels
+    Route::get('/countries', [ApiCountryController::class, 'index']);
+
     // Dashboard
     Route::prefix('dashboard')->group(function () {
         Route::get('/activity', [ApiDashboardController::class, 'activity']);
@@ -1833,4 +1839,58 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{documentId}/signed-url', [ApiDocumentController::class, 'getSignedUrl'])->name('documents.signed-url');
         Route::delete('/{documentId}', [ApiDocumentController::class, 'delete'])->name('documents.delete');
     });
+
+    // -----------------------------------------------------------------------
+    // Facturation électronique via PA/PDP configurable
+    // -----------------------------------------------------------------------
+    Route::prefix('e-invoicing')->group(function () {
+        // Paramètres & configuration PA
+        Route::middleware('permission:einvoicing.settings')->group(function () {
+            Route::get('/settings',                [ApiEInvoicingController::class, 'getSettings']);
+            Route::put('/settings',                [ApiEInvoicingController::class, 'saveSettings']);
+            Route::post('/settings/test-connection',[ApiEInvoicingController::class, 'testConnection']);
+            Route::post('/settings/register-entity',[ApiEInvoicingController::class, 'registerEntity']);
+        });
+
+        // Annuaire PDP
+        Route::middleware('permission:einvoicing.view')->group(function () {
+            Route::get('/directory/search', [ApiEInvoicingController::class, 'searchDirectory']);
+        });
+
+        // Transmission (émission)
+        Route::middleware('permission:einvoicing.transmit')->group(function () {
+            Route::post('/invoices/{invId}/transmit', [ApiEInvoicingController::class, 'transmitInvoice']);
+        });
+        Route::middleware('permission:einvoicing.view')->group(function () {
+            Route::get('/invoices/{invId}/status',    [ApiEInvoicingController::class, 'getTransmissionStatus']);
+            Route::get('/invoices/{invId}/facture-x', [ApiEInvoicingController::class, 'downloadFactureX']);
+        });
+
+        // Réception
+        Route::middleware('permission:einvoicing.receive')->group(function () {
+            Route::get('/received',              [ApiEInvoicingController::class, 'listReceived']);
+            Route::get('/received/count-pending',[ApiEInvoicingController::class, 'countPendingReceived']);
+            Route::get('/received/{id}',         [ApiEInvoicingController::class, 'getReceived']);
+            Route::post('/received/{id}/status', [ApiEInvoicingController::class, 'updateReceivedStatus']);
+            Route::post('/received/{id}/import', [ApiEInvoicingController::class, 'importReceived']);
+        });
+
+        // E-reporting
+        Route::middleware('permission:einvoicing.view')->group(function () {
+            Route::get('/ereporting',             [ApiEInvoicingController::class, 'listEReporting']);
+            Route::post('/ereporting/build',      [ApiEInvoicingController::class, 'buildEReporting']);
+        });
+        Route::middleware('permission:einvoicing.transmit')->group(function () {
+            Route::post('/ereporting/transmit',   [ApiEInvoicingController::class, 'transmitEReporting']);
+        });
+    });
+});
+
+// -----------------------------------------------------------------------
+// Webhooks PA/PDP — Routes publiques (hors auth Sanctum), sécurisées par HMAC
+// -----------------------------------------------------------------------
+Route::prefix('webhooks/einvoicing')->group(function () {
+    Route::post('/facture/cycledevie/{invoiceId}', [EInvoicingWebhookController::class, 'handleLifecycleEvent']);
+    Route::post('/donneesfacturation/{invoiceId}', [EInvoicingWebhookController::class, 'handleBillingData']);
+    Route::post('/declaration',                    [EInvoicingWebhookController::class, 'handleDeclaration']);
 });

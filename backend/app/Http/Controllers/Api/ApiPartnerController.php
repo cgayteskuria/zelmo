@@ -351,8 +351,9 @@ class ApiPartnerController extends Controller
             'ptr_is_supplier'                       => 'nullable|boolean',
             'ptr_is_prospect'                       => 'nullable|boolean',
             'ptr_notes'                             => 'nullable|string|max:255',
-            'ptr_vat_number'                        => 'nullable|string|max:20',
-            'ptr_siren'                             => 'nullable|string|max:14',
+            'ptr_vat_number'                        => 'nullable|string|max:20',        
+            'ptr_siret'                             => 'nullable|string|max:14|regex:/^\d{14}$/',
+            'ptr_country_code'                      => 'nullable|string|size:2',
             'usr_id_referenttech'                   => 'nullable|integer|exists:user_usr,usr_id',
             'fk_pam_id_customer'                    => 'nullable|integer|exists:payment_mode_pam,pam_id',
             'fk_dur_id_payment_condition_customer'  => 'nullable|integer|exists:duration_dur,dur_id',
@@ -392,7 +393,10 @@ class ApiPartnerController extends Controller
 
             // identifiants légaux
             'ptr_vat_number.max'                            => 'Le numéro de TVA ne peut pas dépasser 20 caractères.',
-            'ptr_siren.max'                                 => 'Le numéro SIREN/SIRET ne peut pas dépasser 14 caractères.',
+          
+            'ptr_siret.max'                                 => 'Le SIRET ne peut pas dépasser 14 caractères.',
+            'ptr_siret.regex'                               => 'Le SIRET doit contenir exactement 14 chiffres.',
+            'ptr_country_code.size'                         => 'Le code pays doit contenir exactement 2 caractères (ex : FR).',
 
             // modes de paiement & conditions
             'fk_pam_id_customer.exists'                     => 'Le mode de paiement client sélectionné n\'existe pas.',
@@ -441,7 +445,8 @@ class ApiPartnerController extends Controller
             'ptr_is_prospect'                       => $request->ptr_is_prospect ?? 0,
             'ptr_notes'                             => $request->ptr_notes,
             'ptr_vat_number'                        => $request->ptr_vat_number,
-            'ptr_siren'                             => $request->ptr_siren,
+            'ptr_siret'                             => $request->ptr_siret,
+            'ptr_country_code'                      => $request->ptr_country_code ? strtoupper($request->ptr_country_code) : null,
             'usr_id_referenttech'                   => $request->usr_id_referenttech,
             'fk_pam_id_customer'                    => $request->fk_pam_id_customer,
             'fk_dur_id_payment_condition_customer'  => $request->fk_dur_id_payment_condition_customer,
@@ -489,8 +494,9 @@ class ApiPartnerController extends Controller
             'ptr_is_supplier'                       => 'nullable|boolean',
             'ptr_is_prospect'                       => 'nullable|boolean',
             'ptr_notes'                             => 'nullable|string|max:255',
-            'ptr_vat_number'                        => 'nullable|string|max:20',
-            'ptr_siren'                             => 'nullable|string|max:14',
+            'ptr_vat_number'                        => 'nullable|string|max:20',            
+            'ptr_siret'                             => 'nullable|string|max:14|regex:/^\d{14}$/',
+            'ptr_country_code'                      => 'nullable|string|size:2',
             'usr_id_referenttech'                   => 'nullable|integer|exists:user_usr,usr_id',
             'fk_pam_id_customer'                    => 'nullable|integer|exists:payment_mode_pam,pam_id',
             'fk_dur_id_payment_condition_customer'  => 'nullable|integer|exists:duration_dur,dur_id',
@@ -528,8 +534,10 @@ class ApiPartnerController extends Controller
             'usr_id_referenttech.exists'                    => 'Le référent technique sélectionné n\'existe pas.',
 
             // identifiants légaux
-            'ptr_vat_number.max'                            => 'Le numéro de TVA ne peut pas dépasser 20 caractères.',
-            'ptr_siren.max'                                 => 'Le numéro SIREN/SIRET ne peut pas dépasser 14 caractères.',
+            'ptr_vat_number.max'                            => 'Le numéro de TVA ne peut pas dépasser 20 caractères.',           
+            'ptr_siret.max'                                 => 'Le SIRET ne peut pas dépasser 14 caractères.',
+            'ptr_siret.regex'                               => 'Le SIRET doit contenir exactement 14 chiffres.',
+            'ptr_country_code.size'                         => 'Le code pays doit contenir exactement 2 caractères (ex : FR).',
 
             // modes de paiement & conditions
             'fk_pam_id_customer.exists'                     => 'Le mode de paiement client sélectionné n\'existe pas.',
@@ -579,8 +587,9 @@ class ApiPartnerController extends Controller
             'ptr_is_supplier'                       => $request->input('ptr_is_supplier', $partner->ptr_is_supplier),
             'ptr_is_prospect'                       => $request->input('ptr_is_prospect', $partner->ptr_is_prospect),
             'ptr_notes'                             => $request->input('ptr_notes', $partner->ptr_notes),
-            'ptr_vat_number'                        => $request->input('ptr_vat_number', $partner->ptr_vat_number),
-            'ptr_siren'                             => $request->input('ptr_siren', $partner->ptr_siren),
+            'ptr_vat_number'                        => $request->input('ptr_vat_number', $partner->ptr_vat_number),           
+            'ptr_siret'                             => $request->input('ptr_siret', $partner->ptr_siret),
+            'ptr_country_code'                      => $request->has('ptr_country_code') ? ($request->ptr_country_code ? strtoupper($request->ptr_country_code) : null) : $partner->ptr_country_code,
             'usr_id_referenttech'                   => $request->input('usr_id_referenttech', $partner->usr_id_referenttech),
             'fk_pam_id_customer'                    => $request->input('fk_pam_id_customer', $partner->fk_pam_id_customer),
             'fk_dur_id_payment_condition_customer'  => $request->input('fk_dur_id_payment_condition_customer', $partner->fk_dur_id_payment_condition_customer),

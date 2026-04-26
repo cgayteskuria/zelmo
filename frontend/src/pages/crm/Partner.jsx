@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, lazy, Suspense, useRef } fro
 import { Drawer, Form, Input, Button, Row, Col, Switch, App, Popconfirm, Tabs, Spin, Space, Divider, Table, Tag, Tooltip, Card } from "antd";
 import { DeleteOutlined, SaveOutlined, PlusOutlined, LinkedinOutlined, LinkOutlined } from "@ant-design/icons";
 import { partnersApi, contactsApi, checkAccountAuxiliaryApi, checkLinkedRecordsApi } from "../../services/api";
+import CountrySelect from "../../components/select/CountrySelect";
 import { opportunitiesApi } from "../../services/apiProspect";
 import AccountSelect from "../../components/select/AccountSelect";
 import PaymentModeSelect from "../../components/select/PaymentModeSelect";
@@ -405,6 +406,13 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
         }
     };
 
+    // Défaut France pour les nouveaux partenaires
+    useEffect(() => {
+        if (open && !partnerId) {
+            form.setFieldValue('ptr_country_code', 'FR');
+        }
+    }, [open, partnerId, form]);
+
     // Construire les onglets conditionnels
     const tabItems = useMemo(() => {
         const items = [
@@ -472,14 +480,28 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                         </Row>
 
                         <Row gutter={[16, 8]}>
-                            <Col span={8}>
+                            <Col span={6}>
                                 <Form.Item name="ptr_zip" label="Code Postal">
                                     <Input placeholder="Code postal" />
                                 </Form.Item>
                             </Col>
-                            <Col span={16}>
-                                <Form.Item name="ptr_city" label="Ville" >
+                            <Col span={12}>
+                                <Form.Item name="ptr_city" label="Ville">
                                     <Input placeholder="Ville" />
+                                </Form.Item>
+                            </Col>
+                            <Col span={6}>
+                                <Form.Item
+                                    name="ptr_country_code"
+                                    label="Pays"
+                                    rules={[
+                                        ({ getFieldValue }) => ({
+                                            required: getFieldValue("ptr_is_customer"),
+                                            message: "Le pays est requis pour un client.",
+                                        }),
+                                    ]}
+                                >
+                                    <CountrySelect initialData={entity?.ptr_country_code} />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -508,6 +530,35 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                                 </Form.Item>
                             </Col>
                         </Row>
+                        <Row gutter={[16, 8]}>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="ptr_siret"
+                                    label="SIRET"
+                                    rules={[
+                                        { len: 14, message: "Le SIRET doit comporter 14 chiffres." },
+                                        { pattern: /^\d{14}$/, message: "Le SIRET ne doit contenir que des chiffres." },
+                                        ({ getFieldValue }) => ({
+                                            required: getFieldValue("ptr_is_customer"),
+                                            message: "Le SIRET est requis pour un client (nécessaire pour la facturation électronique).",
+                                        }),
+                                    ]}
+                                    extra={<span style={{ fontSize: 11 }}>14 chiffres — requis pour la facturation électronique des clients</span>}
+                                >
+                                    <Input placeholder="12345678900012" maxLength={14} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="ptr_vat_number"
+                                    label="N° TVA intracommunautaire"
+                                    rules={[{ pattern: /^[A-Z]{2}/, message: "Format : FR + 11 chiffres" }]}
+                                >
+                                    <Input placeholder="FR12345678901" style={{ textTransform: "uppercase" }} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+
                         <Row gutter={[16, 8]}>
                             <Col span={12}>
                                 <Form.Item name="ptr_linkedin_url" label="LinkedIn">
