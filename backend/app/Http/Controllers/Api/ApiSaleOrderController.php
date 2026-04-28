@@ -770,7 +770,7 @@ class ApiSaleOrderController extends ApiBizDocumentController
                     $invoiceLine->inl_tax_rate = $orderLine->orl_tax_rate;
                     $invoiceLine->inl_prtlib = $orderLine->orl_prtlib;
                     $invoiceLine->inl_prtdesc = $orderLine->orl_prtdesc;
-                    $invoiceLine->inl_prttype = $orderLine->orl_prttype;
+                    $invoiceLine->inl_prttype = in_array($orderLine->orl_prttype, ['conso', 'service']) ? $orderLine->orl_prttype : null;
                     $invoiceLine->inl_note = $orderLine->orl_note;
                     $invoiceLine->fk_usr_id_author = $userId;
                     $invoiceLine->fk_usr_id_updater = $userId;
@@ -840,7 +840,7 @@ class ApiSaleOrderController extends ApiBizDocumentController
                     $contractLine->col_tax_rate = $orderLine->orl_tax_rate;
                     $contractLine->col_prtlib = $orderLine->orl_prtlib;
                     $contractLine->col_prtdesc = $orderLine->orl_prtdesc;
-                    $contractLine->col_prttype = $orderLine->orl_prttype;
+                    $contractLine->col_prttype = in_array($orderLine->orl_prttype, ['conso', 'service']) ? $orderLine->orl_prttype : null;
                     $contractLine->col_note = $orderLine->orl_note;
                     $contractLine->fk_usr_id_author = $userId;
                     $contractLine->fk_usr_id_updater = $userId;

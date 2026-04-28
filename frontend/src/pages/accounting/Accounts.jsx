@@ -90,6 +90,7 @@ export default function Accounts() {
                 fetchFn={accountsApi.list}
                 onRowClick={handleRowClick}
                 defaultSort={{ field: 'acc_code', order: 'ASC' }}
+                csv={true}
             />
 
             {drawerOpen && (

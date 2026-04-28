@@ -312,6 +312,7 @@ export default function Invoices() {
                 columns={columns}
                 defaultSort={{ field: 'inv_number', order: 'DESC' }}
                 onRowClick={handleRowClick}
+                csv={true}
             />
 
             {/* Drawer pour import OCR (factures fournisseur uniquement) */}

@@ -201,7 +201,9 @@ abstract class ApiBizDocumentController extends Controller
             $selectFields[] = 'line.' . $fieldMap['isSubscription'] . ' as isSubscription';
         }
 
-       
+        if (isset($fieldMap['prtType'])) {
+            $selectFields[] = 'line.' . $fieldMap['prtType'] . ' as prtType';
+        }
 
         return $selectFields;
     }
@@ -273,10 +275,10 @@ abstract class ApiBizDocumentController extends Controller
 
             $margins = DB::table($lineTable)
                 ->select([
-                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = 1 THEN ' . $fieldMap['purchasePriceUnitHt'] . ' * ' . $fieldMap['qty'] . ' ELSE 0 END) AS servicePR'),
-                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = 1 THEN ' . $fieldMap['totalHt'] . ' ELSE 0 END) AS servicePV'),
-                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = 0 OR ' . $fieldMap['prtType'] . ' IS NULL THEN ' . $fieldMap['purchasePriceUnitHt'] . ' * ' . $fieldMap['qty'] . ' ELSE 0 END) AS productPR'),
-                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = 0 OR ' . $fieldMap['prtType'] . ' IS NULL THEN ' . $fieldMap['totalHt'] . ' ELSE 0 END) AS productPV')
+                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = \'service\' THEN ' . $fieldMap['purchasePriceUnitHt'] . ' * ' . $fieldMap['qty'] . ' ELSE 0 END) AS servicePR'),
+                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = \'service\' THEN ' . $fieldMap['totalHt'] . ' ELSE 0 END) AS servicePV'),
+                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = \'conso\' OR ' . $fieldMap['prtType'] . ' IS NULL THEN ' . $fieldMap['purchasePriceUnitHt'] . ' * ' . $fieldMap['qty'] . ' ELSE 0 END) AS productPR'),
+                    DB::raw('SUM(CASE WHEN ' . $fieldMap['prtType'] . ' = \'conso\' OR ' . $fieldMap['prtType'] . ' IS NULL THEN ' . $fieldMap['totalHt'] . ' ELSE 0 END) AS productPV')
                 ])
                 ->where($fieldMap['lineType'], '=', 0)
                 ->where($lineForeignKey, '=', $id)
@@ -380,7 +382,7 @@ abstract class ApiBizDocumentController extends Controller
         }
 
         if (isset($fieldMap['prtType'])) {
-            $lineData[$fieldMap['prtType']] = $request->input('prtType', 0);
+            $lineData[$fieldMap['prtType']] = $request->input('prtType') ?: null;
         }
 
         return $lineData;

@@ -67,6 +67,7 @@ export default function Devices() {
                 columns={columns}
                 defaultSort={{ field: 'dev_hostname', order: 'ASC' }}
                 onRowClick={handleRowClick}
+                csv={true}
             />
 
             {drawerOpen && (

@@ -94,6 +94,26 @@ class VeryfiService
         }
     }
 
+    /**
+     * Test Veryfi API credentials by listing documents (limit 1)
+     */
+    public function testCredentials(string $clientId, string $clientSecret, string $username, string $apiKey): array
+    {
+        try {
+            $client = new Client($clientId, $clientSecret, $username, $apiKey);
+            $raw = $client->get_documents(['limit' => 1]);
+            $response = is_string($raw) ? json_decode($raw, true) : $raw;
+
+            if (isset($response['status']) && $response['status'] === 'fail') {
+                return ['success' => false, 'message' => $response['error'] ?? 'Authentification échouée'];
+            }
+
+            return ['success' => true, 'message' => 'Connexion Veryfi établie avec succès'];
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     private function debugVeryfiConnection(): string
     {
         $ch = curl_init("https://api.veryfi.com/api/v8/partner/documents/");

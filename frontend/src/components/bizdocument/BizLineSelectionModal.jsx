@@ -39,19 +39,17 @@ export default function BizLineSelectionModal({
         if (open && allLines.length > 0) {
             const initial = {};
             allLines.forEach(line => {
-                // Pour les lignes normales (type 0), utiliser la quantité restante
-                // Pour les autres types (titre 1, sous-total 2), quantité fixe à 1
                 const isNormalLine = line.lineType === 0;
-                const qtyInvoiced = line.qtyInvoiced || 0;
-                const qtyAvailable = isNormalLine ? (line.qty - qtyInvoiced) : 1;
+                const qtyInvoiced = parseFloat(line.qtyInvoiced) || 0;
+                const qty = parseFloat(line.qty) || 0;
+                const qtyAvailable = isNormalLine ? (qty - qtyInvoiced) : 1;
 
-                // Inclure uniquement les lignes avec quantité disponible > 0
                 if (qtyAvailable > 0 || !isNormalLine) {
                     initial[line.lineId] = {
                         qty: qtyAvailable,
                         maxQty: qtyAvailable,
-                        priceUnitHt: line.priceUnitHt || 0,
-                        discount: line.discount || 0,
+                        priceUnitHt: parseFloat(line.priceUnitHt) || 0,
+                        discount: parseFloat(line.discount) || 0,
                         lineType: line.lineType,
                     };
                 }
@@ -69,9 +67,8 @@ export default function BizLineSelectionModal({
             return;
         }
 
-        // Calculer la quantité disponible (quantité commandée - quantité déjà facturée)
-        const qtyInvoiced = line.qtyInvoiced || 0;
-        const maxQty = line.qty - qtyInvoiced;
+        const qtyInvoiced = parseFloat(line.qtyInvoiced) || 0;
+        const maxQty = (parseFloat(line.qty) || 0) - qtyInvoiced;
 
         // Valider que la quantité ne dépasse pas le maximum disponible
         if (newQty > maxQty) {
@@ -223,9 +220,8 @@ export default function BizLineSelectionModal({
             align: 'right',
             width: 110,
             render: (v, line) => {
-                // Ne pas afficher de quantité pour les titres et sous-totaux
                 if (line.lineType !== 0) return null;
-                return v?.toFixed(2);
+                return (parseFloat(v) || 0).toFixed(2);
             },
         },
         {
@@ -234,9 +230,8 @@ export default function BizLineSelectionModal({
             align: 'right',
             width: 110,
             render: (v, line) => {
-                // Ne pas afficher de quantité pour les titres et sous-totaux
                 if (line.lineType !== 0) return null;
-                const qtyInvoiced = v || 0;
+                const qtyInvoiced = parseFloat(v) || 0;
                 return (
                     <span style={{ color: qtyInvoiced > 0 ? '#1890ff' : '#999' }}>
                         {qtyInvoiced.toFixed(2)}
@@ -273,10 +268,9 @@ export default function BizLineSelectionModal({
                 // Ne pas afficher d'input pour les lignes titre et sous-total
                 if (line.lineType !== 0) return null;
 
-                const qtyInvoiced = line.qtyInvoiced || 0;
-                const maxQty = line.qty - qtyInvoiced;
+                const qtyInvoiced = parseFloat(line.qtyInvoiced) || 0;
+                const maxQty = (parseFloat(line.qty) || 0) - qtyInvoiced;
 
-                // Désactiver l'input si plus de quantité disponible
                 if (maxQty <= 0) {
                     return <span style={{ color: '#999' }}>-</span>;
                 }
@@ -321,9 +315,9 @@ export default function BizLineSelectionModal({
                 // if (line.lineType === 1) return null;
 
                 // Ligne normale
-                const qty = selectedLinesWithQty[line.lineId]?.qty || 0;
-                const discount = line.discount || 0;
-                const total = line.priceUnitHt * qty * (1 - discount / 100);
+                const qty = parseFloat(selectedLinesWithQty[line.lineId]?.qty) || 0;
+                const discount = parseFloat(line.discount) || 0;
+                const total = (parseFloat(line.priceUnitHt) || 0) * qty * (1 - discount / 100);
                 return formatCurrency(total);
             },
         },
@@ -336,8 +330,8 @@ export default function BizLineSelectionModal({
             const line = allLines.find(l => l.lineId === parseInt(lineId));
             if (!line || line.lineType !== 0) return sum; // Ignorer les titres et sous-totaux
 
-            const discount = line.discount || 0;
-            const lineTotal = line.priceUnitHt * data.qty * (1 - discount / 100);
+            const discount = parseFloat(line.discount) || 0;
+            const lineTotal = (parseFloat(line.priceUnitHt) || 0) * data.qty * (1 - discount / 100);
             return sum + lineTotal;
         }, 0);
     }, [selectedLinesWithQty, allLines]);

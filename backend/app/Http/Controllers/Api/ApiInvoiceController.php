@@ -11,6 +11,7 @@ use App\Models\InvoiceLineModel;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
 use App\Models\PaymentModel;
+use App\Models\PaymentAllocationModel;
 use App\Models\DurationsModel;
 use App\Models\AccountTaxPositionCorrespondenceModel;
 use App\Models\AccountTaxModel;
@@ -1245,6 +1246,174 @@ class ApiInvoiceController extends ApiBizDocumentController
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Génère un avoir (brouillon) à partir d'une facture avec les lignes sélectionnées.
+     *
+     * @param int $invId ID de la facture source
+     * @param Request $request { lines: [{ line_id, qty, line_type }] }
+     * @return JsonResponse
+     */
+    public function generateRefund(int $invId, Request $request): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $userId   = $request->user()->usr_id;
+            $selected = $request->input('lines', []);
+
+            if (empty($selected)) {
+                return response()->json(['success' => false, 'message' => 'Veuillez sélectionner au moins une ligne'], 400);
+            }
+
+            $sourceInvoice = InvoiceModel::with(['lines' => fn($q) => $q->orderBy('inl_order')])
+                ->findOrFail($invId);
+
+            if (!in_array($sourceInvoice->inv_status, [InvoiceModel::STATUS_FINALIZED, InvoiceModel::STATUS_ACCOUNTED])) {
+                return response()->json(['success' => false, 'message' => 'Seules les factures validées peuvent générer un avoir'], 400);
+            }
+
+            // Point 1 : facture totalement réglée
+            if ((float) $sourceInvoice->inv_payment_progress >= 100) {
+                return response()->json(['success' => false, 'message' => 'La facture est entièrement réglée, impossible de générer un avoir'], 400);
+            }
+
+            $refundOperation = $sourceInvoice->inv_operation === InvoiceModel::OPERATION_CUSTOMER_INVOICE
+                ? InvoiceModel::OPERATION_CUSTOMER_REFUND
+                : InvoiceModel::OPERATION_SUPPLIER_REFUND;
+
+            // Indexer les lignes sélectionnées par ID
+            $qtyMap    = array_column($selected, 'qty', 'line_id');
+            $typeMap   = array_column($selected, 'line_type', 'line_id');
+            $selectedIds = array_column($selected, 'line_id');
+
+            // Calculer les totaux et préparer les lignes à copier
+            $totalHt  = 0;
+            $totalTax = 0;
+            $linesToCopy = [];
+
+            foreach ($sourceInvoice->lines as $line) {
+                $isNormal = $line->inl_type === 0;
+
+                if ($isNormal && !in_array($line->inl_id, $selectedIds)) {
+                    continue;
+                }
+
+                $qty    = $isNormal ? (float) ($qtyMap[$line->inl_id] ?? 0) : 1;
+                if ($isNormal && $qty <= 0) continue;
+
+                $lineHt  = $isNormal ? round($line->inl_priceunitht * $qty * (1 - $line->inl_discount / 100), 4) : 0;
+                $lineTax = $isNormal ? round($lineHt * $line->inl_tax_rate / 100, 4) : 0;
+
+                $totalHt  += $lineHt;
+                $totalTax += $lineTax;
+
+                $linesToCopy[] = ['line' => $line, 'qty' => $qty, 'lineHt' => $lineHt];
+            }
+
+            $totalTtc = round($totalHt + $totalTax, 3);
+            $amountRemaining = (float) $sourceInvoice->inv_amount_remaining;
+
+            // Point 3 : montant avoir ne peut pas dépasser le restant dû
+            if ($totalTtc > $amountRemaining + 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => sprintf(
+                        "Le montant de l'avoir (%.2f €) ne peut pas dépasser le montant restant dû (%.2f €)",
+                        $totalTtc,
+                        $amountRemaining
+                    ),
+                ], 400);
+            }
+
+            // Créer l'avoir en brouillon via InvoiceService
+            $invoiceService = new InvoiceService();
+            $avoir = $invoiceService->createInvoice([
+                'inv_date'                    => now()->format('Y-m-d'),
+                'inv_duedate'                 => now()->format('Y-m-d'),
+                'inv_operation'               => $refundOperation,
+                'fk_ptr_id'                   => $sourceInvoice->fk_ptr_id,
+                'fk_ctc_id'                   => $sourceInvoice->fk_ctc_id,
+                'fk_pam_id'                   => $sourceInvoice->fk_pam_id,
+                'fk_dur_id_payment_condition' => $sourceInvoice->fk_dur_id_payment_condition,
+                'fk_tap_id'                   => $sourceInvoice->fk_tap_id,
+                'fk_inv_id'                   => $invId,
+                'inv_totalht'   => round($totalHt, 3),
+                'inv_totaltax'  => round($totalTax, 3),
+                'inv_totalttc'  => $totalTtc,
+                'inv_status'    => InvoiceModel::STATUS_DRAFT,
+            ], $userId);
+
+            // Copier les lignes vers l'avoir
+            $order = 1;
+            foreach ($linesToCopy as $item) {
+                $src = $item['line'];
+                $line = new InvoiceLineModel();
+                $line->fk_inv_id              = $avoir->inv_id;
+                $line->inl_order              = $order++;
+                $line->inl_type               = $src->inl_type;
+                $line->fk_prt_id              = $src->fk_prt_id;
+                $line->fk_tax_id              = $src->fk_tax_id;
+                $line->inl_qty                = $item['qty'];
+                $line->inl_priceunitht        = $src->inl_priceunitht;
+                $line->inl_purchasepriceunitht = $src->inl_purchasepriceunitht;
+                $line->inl_discount           = $src->inl_discount;
+                $line->inl_mtht               = $item['lineHt'];
+                $line->inl_tax_rate           = $src->inl_tax_rate;
+                $line->inl_prtlib             = $src->inl_prtlib;
+                $line->inl_prtdesc            = $src->inl_prtdesc;
+                $line->inl_prttype            = in_array($src->inl_prttype, ['conso', 'service']) ? $src->inl_prttype : null;
+                $line->inl_is_subscription    = $src->inl_is_subscription;
+                $line->inl_note               = $src->inl_note;
+                $line->fk_usr_id_author       = $userId;
+                $line->fk_usr_id_updater      = $userId;
+                $line->save();
+            }
+
+            // Point 2 : créer le paiement par avoir et l'allocation sur la facture source
+            $payOperation = $sourceInvoice->inv_operation === InvoiceModel::OPERATION_CUSTOMER_INVOICE
+                ? PaymentModel::OPERATION_CUSTOMER_PAYMENT
+                : PaymentModel::OPERATION_SUPPLIER_PAYMENT;
+
+            $payAmount = min($totalTtc, $amountRemaining);
+
+            $payment = new PaymentModel();
+            $payment->pay_date            = now()->format('Y-m-d');
+            $payment->pay_amount          = $payAmount;
+            $payment->fk_bts_id           = null;
+            $payment->fk_pam_id           = $sourceInvoice->fk_pam_id;
+            $payment->pay_reference       = null;
+            $payment->pay_status          = PaymentModel::STATUS_DRAFT;
+            $payment->pay_operation       = $payOperation;
+            $payment->fk_inv_id_refund    = $avoir->inv_id;
+            $payment->fk_ptr_id           = $sourceInvoice->fk_ptr_id;
+            $payment->fk_usr_id_author    = $userId;
+            $payment->save();
+
+            $allocation = new PaymentAllocationModel();
+            $allocation->fk_pay_id        = $payment->pay_id;
+            $allocation->fk_inv_id        = $invId;
+            $allocation->pal_amount       = $payAmount;
+            $allocation->fk_usr_id_author = $userId;
+            $allocation->save();
+
+            // Mettre à jour les montants restants
+            $sourceInvoice->updateAmountRemaining();
+            $avoir->updateAmountRemaining();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Avoir généré avec succès',
+                'data'    => ['id' => $avoir->inv_id, 'number' => $avoir->inv_number],
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la génération de l\'avoir : ' . $e->getMessage()], 500);
         }
     }
 }

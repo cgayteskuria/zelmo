@@ -482,6 +482,10 @@ class ApiProspectOpportunityController extends Controller
             $query->where('prospect_opportunity_opp.fk_usr_id_seller', $user->usr_id);
         }
 
+        if ($request->filled('fk_ptr_id')) {
+            $query->where('prospect_opportunity_opp.fk_ptr_id', $request->input('fk_ptr_id'));
+        }
+
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {

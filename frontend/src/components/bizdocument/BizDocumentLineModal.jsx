@@ -216,7 +216,8 @@ export default function BizDocumentLineModal({ open, onClose, onSave, lineData, 
                 ...values,
                 parentId: parentId,
                 lineType: lineType,
-                lineOrder: lineData.lineOrder
+                lineOrder: lineData.lineOrder,
+                prtType: selectedPrtType,
             };
 
             // Conversion des champs boolean si nécessaire

@@ -43,21 +43,23 @@ export default function OpportunitySelect({
         onSelect?.(val, option);
     };
 
+    const { defaultValue: _defaultValue, ...restSelectProps } = selectProps;
+
     return (
         <Select
-            value={value}
-            onChange={handleChange}
-            {...selectProps}
-            {...props}
             allowClear
             optionRender={(option) => (
                 <div>
                     <div>{option.label}</div>
-                    {option.data.ptr_name && (
+                    {option.data?.ptr_name && (
                         <div style={{ fontSize: 12, color: '#999' }}>{option.data.ptr_name}</div>
                     )}
                 </div>
             )}
+            {...restSelectProps}
+            {...props}
+            value={value}
+            onChange={handleChange}
         />
     );
 }

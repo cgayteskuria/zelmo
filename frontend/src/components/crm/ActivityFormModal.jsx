@@ -21,6 +21,7 @@ export default function ActivityFormModal({
     const [form] = Form.useForm();
 
     const fkOppId = Form.useWatch('fk_opp_id', form);
+    const fkPtrId = Form.useWatch('fk_ptr_id', form);
     // const pageLabel = Form.useWatch("pac_subject", form);
     const [pageLabel, setPageLabel] = useState("Nouvelle activité");
     const [partnerInitialData, setPartnerInitialData] = useState(null);
@@ -102,6 +103,11 @@ export default function ActivityFormModal({
         }
     };
 
+    const handlePartnerChange = (val) => {
+        form.setFieldValue('fk_opp_id', undefined);
+        if (!val) setPartnerInitialData(null);
+    };
+
     const handleFormSubmit = async (values) => {
         const payload = {
             ...values,
@@ -173,24 +179,28 @@ export default function ActivityFormModal({
                                     filters={{ is_seller: 1 }}
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="fk_opp_id" label="Opportunité">
-                                <OpportunitySelect
-                                    initialData={entity?.opportunity}
-                                    onSelect={handleOpportunitySelect}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
+                        </Col> 
+                         <Col span={12}>
                             <Form.Item name="fk_ptr_id" label="Prospect" rules={[{ required: true, message: "Le prospect est requis" }]}>
                                 <PartnerSelect
                                     initialData={partnerInitialData ?? entity?.partner}
                                     filters={{ is_prospect: 1 }}
                                     disabled={!!fkOppId}
+                                    onChange={handlePartnerChange}
                                 />
                             </Form.Item>
                         </Col>
+                        <Col span={12}>
+                            <Form.Item name="fk_opp_id" label="Opportunité">
+                                <OpportunitySelect
+                                    key={fkPtrId ?? 'no-partner'}
+                                    initialData={!fkPtrId || fkPtrId === entity?.opportunity?.fk_ptr_id ? entity?.opportunity : null}
+                                    onSelect={handleOpportunitySelect}
+                                    filters={fkPtrId ? { fk_ptr_id: fkPtrId } : {}}
+                                />
+                            </Form.Item>
+                        </Col>
+                      
                         <Col span={24}>
                             <Form.Item name="pac_subject" label="Sujet" rules={[{ required: true, message: "Le sujet est requis" }]}>
                                 <Input placeholder="Sujet de l'activité" />

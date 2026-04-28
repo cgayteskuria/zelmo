@@ -20,6 +20,10 @@ export const companyApi = {
   // Générer une icône SVG à partir du logo carré
   generateSvgIcon: (companyId) =>
     api.post(`/company/${companyId}/generate-svg-icon`),
+
+  // Tester la connexion Veryfi avec les identifiants fournis
+  testVeryfiConnection: (credentials) =>
+    api.post(`/company/test-veryfi-connection`, credentials),
 };
 
 /**

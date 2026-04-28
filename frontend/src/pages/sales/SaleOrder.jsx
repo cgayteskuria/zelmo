@@ -25,7 +25,7 @@ import WarehouseSelect from "../../components/select/WarehouseSelect";
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
-const BizLineSelectionModal = lazy(() => import('../../components/bizdocument/BizLineSelectionModal'));
+import BizLineSelectionModal from '../../components/bizdocument/BizLineSelectionModal';
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
 
 // Composant de chargement pour les onglets
@@ -1367,18 +1367,14 @@ export default function SaleOrder() {
             </Modal>
 
             {/* Modal de sélection des lignes à facturer */}
-            {invoiceModalOpen && (
-                <Suspense fallback={<TabLoader />}>
-                    <BizLineSelectionModal
-                        open={invoiceModalOpen}
-                        title="Sélectionner les lignes à facturer"
-                        okText="Générer la facture"
-                        dataSource={orderLines}
-                        onOk={handleGenerateInvoiceAndContract}
-                        onCancel={() => setInvoiceModalOpen(false)}
-                    />
-                </Suspense>
-            )}
+            <BizLineSelectionModal
+                open={invoiceModalOpen}
+                title="Sélectionner les lignes à facturer"
+                okText="Générer la facture"
+                dataSource={orderLines}
+                onOk={handleGenerateInvoiceAndContract}
+                onCancel={() => setInvoiceModalOpen(false)}
+            />
 
             {/* Dialog d'envoi d'email */}
             {saleOrderId && emailDialogOpen && (

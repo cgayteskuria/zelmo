@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, lazy, Suspense, useRef } from "react";
-import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Alert, App, Tag } from "antd";
+import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Alert, App, Tag, Modal } from "antd";
 import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, UnlockOutlined, LeftOutlined, RightOutlined, CloudUploadOutlined } from "@ant-design/icons";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useListNavigation } from "../../hooks/useListNavigation";
@@ -21,6 +21,7 @@ import { createDateValidator } from '../../utils/writingPeriod';
 import BizDocumentLinesTable from "../../components/bizdocument/BizDocumentLinesTable";
 import BizDocumentMarginTable, { calculateMargins } from "../../components/bizdocument/BizDocumentMarginTable";
 import BizDocumentTotalsCard from "../../components/bizdocument/BizDocumentTotalsCard";
+import BizLineSelectionModal from "../../components/bizdocument/BizLineSelectionModal";
 
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
@@ -67,6 +68,7 @@ export default function Invoice() {
     const pendingLineTypeRef = useRef(null);
     const linesTableRef = useRef(null);
     const fetchInvoiceLinesRef = useRef(null); // toujours à jour, évite la TDZ dans onDataLoadedCallback
+    const reloadInvoiceDataRef = useRef(null);  // toujours à jour, évite la TDZ dans handleGenerateRefund
 
     const [showDeleteBtn, setShowDeleteBtn] = useState(false);
     const [formDisabled, setFormDisabled] = useState(true);
@@ -79,6 +81,7 @@ export default function Invoice() {
     const [documentsCount, setDocumentsCount] = useState(undefined);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [emailAttachments, setEmailAttachments] = useState([]);
+    const [refundModalOpen, setRefundModalOpen] = useState(false);
     const [fkTapId, setFkTapId] = useState(false);
 
     const [fkCtcId, setFkCtcId] = useState(null);
@@ -420,6 +423,42 @@ export default function Invoice() {
         }
     }, [invoiceId, navigate]);
 
+    const handleGenerateRefund = useCallback(async (lines) => {
+        if (!lines || lines.length === 0) {
+            message.error('Veuillez sélectionner au moins une ligne');
+            return;
+        }
+        try {
+            const result = await invoicesGenericApi.generateRefund(invoiceId, lines);
+            setRefundModalOpen(false);
+            await reloadInvoiceDataRef.current?.();
+            Modal.success({
+                title: 'Avoir généré',
+                content: (
+                    <div>
+                        <p>L'avoir <strong>{result.data?.number}</strong> a été créé en brouillon.</p>
+                        <a
+                            href="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                window.open(
+                                    invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE
+                                        ? `/customer-invoices/${result.data?.id}`
+                                        : `/supplier-invoices/${result.data?.id}`,
+                                    '_blank'
+                                );
+                            }}
+                        >
+                            Ouvrir l'avoir →
+                        </a>
+                    </div>
+                ),
+            });
+        } catch (error) {
+            message.error(error?.message || "Erreur lors de la génération de l'avoir");
+        }
+    }, [invoiceId, invOperation, message]);
+
     // Fonction pour récupérer les lignes
     const fetchInvoiceLines = useCallback(async () => {
         if (!invoiceId) {
@@ -523,6 +562,8 @@ export default function Invoice() {
         }
     }, [invoiceId, fetchInvoiceLines]);
 
+    // Maintient la ref à jour — handleGenerateRefund l'utilise pour éviter la TDZ
+    reloadInvoiceDataRef.current = reloadInvoiceData;
 
     const handleTaxChange = async (value) => {
         setFkTapId(value);
@@ -542,7 +583,7 @@ export default function Invoice() {
         }
     };
 
-   
+
 
     const handleSend = useCallback(async () => {
         if (!invoiceId) {
@@ -919,11 +960,10 @@ export default function Invoice() {
                                                         type={eInvoicingTransmission ? "default" : "default"}
                                                     >
                                                         {eInvoicingTransmission
-                                                            ? `${eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status} — ${
-                                                                eInvoicingTransmission.eit_transmitted_at
-                                                                    ? dayjs(eInvoicingTransmission.eit_transmitted_at).format('DD/MM/YYYY HH:mm')
-                                                                    : ''
-                                                              }`
+                                                            ? `${eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status} — ${eInvoicingTransmission.eit_transmitted_at
+                                                                ? dayjs(eInvoicingTransmission.eit_transmitted_at).format('DD/MM/YYYY HH:mm')
+                                                                : ''
+                                                            }`
                                                             : "Transmettre via PDP"}
                                                     </Button>
                                                 </Col>
@@ -957,6 +997,26 @@ export default function Invoice() {
                                         )}
                                     </Row>
                                 )}
+                                {/* Bouton Générer un avoir — factures client/fournisseur validées et non totalement réglées */}
+                                {invoiceId &&
+                                    (invStatus === INVOICE_STATUS.FINALIZED || invStatus === INVOICE_STATUS.ACCOUNTED) &&
+                                    invBeingEdited === false &&
+                                    Number(invPaymentProgress) < 100 &&
+                                    (invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE || invOperation === INVOICE_OPERATION.SUPPLIER_INVOICE) && (
+                                        <Row gutter={8}>
+                                            <Col span={24}>
+                                                <Button
+                                                    type="secondary"
+                                                    size="default"
+                                                    style={{ width: '100%', margin: '4px' }}
+                                                    onClick={() => setRefundModalOpen(true)}
+                                                    disabled={false}
+                                                >
+                                                    Générer un avoir
+                                                </Button>
+                                            </Col>
+                                        </Row>
+                                    )}
                                 {/* Afficher message si l'avoir ou l'acompte est utilisé */}
                                 {usageInfo.isUsed && (
                                     <Alert
@@ -1019,7 +1079,7 @@ export default function Invoice() {
                             parentStatus={invBeingEdited ? false : invStatus}
                             parentPaymentProgress={invPaymentProgress}
                             parentData={{
-                               
+
                                 usageInfo: usageInfo,
                                 operation: invOperation,
                             }}
@@ -1203,6 +1263,15 @@ export default function Invoice() {
                     />
                 </Suspense>
             )}
+            {/* Modal de sélection des lignes pour générer un avoir */}
+            <BizLineSelectionModal
+                open={refundModalOpen}
+                title="Sélectionner les lignes à créditer"
+                okText="Générer l'avoir"
+                dataSource={invoiceLines}
+                onOk={handleGenerateRefund}
+                onCancel={() => setRefundModalOpen(false)}
+            />
         </PageContainer>
     );
 }

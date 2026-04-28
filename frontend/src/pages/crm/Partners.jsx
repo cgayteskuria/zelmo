@@ -196,6 +196,7 @@ export default function Partners() {
                     onClose={closeDrawer}
                     partnerId={selectedItemId}
                     onSubmit={handleFormSubmit}
+                    csv={true}
                 />
             )}
 

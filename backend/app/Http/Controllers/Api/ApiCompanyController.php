@@ -8,12 +8,33 @@ use App\Models\MessageEmailAccountModel;
 use App\Models\MessageTemplateModel;
 use App\Models\DocumentModel;
 use App\Services\DocumentService;
+use App\Services\VeryfiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class ApiCompanyController extends Controller
 {
+    public function testVeryfiConnection(Request $request)
+    {
+        $validated = $request->validate([
+            'cop_veryfi_client_id'     => 'required|string',
+            'cop_veryfi_client_secret' => 'required|string',
+            'cop_veryfi_username'      => 'required|string',
+            'cop_veryfi_api_key'       => 'required|string',
+        ]);
+
+        $service = new VeryfiService();
+        $result = $service->testCredentials(
+            $validated['cop_veryfi_client_id'],
+            $validated['cop_veryfi_client_secret'],
+            $validated['cop_veryfi_username'],
+            $validated['cop_veryfi_api_key']
+        );
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
     /**
      * Récupérer les informations de la company avec la banque par défaut
      * @return \Illuminate\Http\JsonResponse

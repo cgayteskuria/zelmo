@@ -792,6 +792,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/{id}', [ApiCompanyController::class, 'update']);
             Route::post('/{id}/upload-logo', [ApiCompanyController::class, 'uploadLogo']);
             Route::post('/{id}/generate-svg-icon', [ApiCompanyController::class, 'generateSvgFromSquareLogo']);
+            Route::post('/test-veryfi-connection', [ApiCompanyController::class, 'testVeryfiConnection']);
         });
     });
 
@@ -1439,10 +1440,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('permission:invoices.create')->group(function () {
             Route::post('', [ApiInvoiceController::class, 'store']);
             Route::post('/{invId}/lines', [ApiInvoiceController::class, 'saveLine'])->name('invoices.save-line');
-
-
             Route::post('/{id}/duplicate', [ApiInvoiceController::class, 'duplicate'])->name('invoices.duplicate');
             Route::post('/calculate-due-date', [ApiInvoiceController::class, 'calculateDueDate']);
+            Route::post('/{invId}/generate-refund', [ApiInvoiceController::class, 'generateRefund'])->name('invoices.generate-refund');
         });
 
         // Routes de modification (permission: invoices.edit)

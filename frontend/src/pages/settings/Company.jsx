@@ -24,6 +24,7 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
         square: null,
         printable: null
     });
+    const [veryfiTestLoading, setVeryfiTestLoading] = useState(false);
 
     const pageLabel = Form.useWatch('cop_label', form);
 
@@ -149,6 +150,29 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
             </CanAccess>
         </Space>
     );
+
+    const handleTestVeryfiConnection = async () => {
+        const values = form.getFieldsValue();
+        const { cop_veryfi_client_id, cop_veryfi_client_secret, cop_veryfi_username, cop_veryfi_api_key } = values;
+        if (!cop_veryfi_client_id || !cop_veryfi_client_secret || !cop_veryfi_username || !cop_veryfi_api_key) {
+            message.warning('Veuillez renseigner tous les identifiants Veryfi avant de tester.');
+            return;
+        }
+        setVeryfiTestLoading(true);
+        try {
+            await submit(values, { closeDrawer: false });
+            const res = await companyApi.testVeryfiConnection({ cop_veryfi_client_id, cop_veryfi_client_secret, cop_veryfi_username, cop_veryfi_api_key });
+            if (res.success) {
+                message.success(res.message);
+            } else {
+                message.error(res.message);
+            }
+        } catch {
+            // submit affiche déjà l'erreur de sauvegarde via useEntityForm
+        } finally {
+            setVeryfiTestLoading(false);
+        }
+    };
 
     /**
      * Onglets du formulaire
@@ -589,6 +613,12 @@ export default function Company({ companyId, open, onClose, onSubmit, drawerSize
                                 </Form.Item>
                             </Col>
                         </Row>
+                        <Button
+                            onClick={handleTestVeryfiConnection}
+                            loading={veryfiTestLoading}
+                        >
+                            Tester la connexion
+                        </Button>
                     </div>
                 </>
             ),

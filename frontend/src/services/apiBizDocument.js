@@ -190,6 +190,10 @@ export const invoicesGenericApi = {
     api.post(`/invoices/${invId}/update-lines-tax-position`, {
       fk_tap_id: fkTapId,
     }),
+
+  // Générer un avoir (brouillon) à partir d'une facture avec les lignes sélectionnées
+  generateRefund: (invId, lines) =>
+    api.post(`/invoices/${invId}/generate-refund`, { lines }),
 };
 
 /**
