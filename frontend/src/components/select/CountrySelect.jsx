@@ -81,7 +81,7 @@ export default function CountrySelect({
                 );
             }}
             options={resolvedOptions}
-            onDropdownVisibleChange={handleDropdownVisibleChange}
+            onOpenChange={handleDropdownVisibleChange}
             {...props}
         />
     );

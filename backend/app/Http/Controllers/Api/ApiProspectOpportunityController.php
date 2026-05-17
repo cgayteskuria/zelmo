@@ -44,7 +44,6 @@ class ApiProspectOpportunityController extends Controller
                 'opp_amount',
                 'opp_probability',
                 'opp_closed_date',
-                'opp_closed_date',
                 'opp_created',
                 'pps_label',
                 'pps_color',
@@ -54,6 +53,11 @@ class ApiProspectOpportunityController extends Controller
                 'pso_label',
                 DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
                 DB::raw("ROUND(opp_amount * opp_probability / 100, 2) as opp_weighted_amount"),
+                DB::raw("CASE
+                    WHEN EXISTS (SELECT 1 FROM prospect_activity_pac WHERE fk_opp_id = prospect_opportunity_opp.opp_id AND pac_date >= NOW() AND pac_is_done = 0) THEN 'upcoming'
+                    WHEN EXISTS (SELECT 1 FROM prospect_activity_pac WHERE fk_opp_id = prospect_opportunity_opp.opp_id AND pac_date < NOW() AND pac_is_done = 0) THEN 'overdue'
+                    ELSE 'none'
+                END as activity_status"),
             ])
             ->leftJoin('prospect_pipeline_stage_pps', 'fk_pps_id', '=', 'pps_id')
             ->leftJoin('partner_ptr', 'fk_ptr_id', '=', 'ptr_id')
@@ -223,6 +227,11 @@ class ApiProspectOpportunityController extends Controller
                 'fk_ptr_id',
                 'ptr_name',
                 DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
+                DB::raw("CASE
+                    WHEN EXISTS (SELECT 1 FROM prospect_activity_pac WHERE fk_opp_id = prospect_opportunity_opp.opp_id AND pac_date >= NOW() AND pac_is_done = 0) THEN 'upcoming'
+                    WHEN EXISTS (SELECT 1 FROM prospect_activity_pac WHERE fk_opp_id = prospect_opportunity_opp.opp_id AND pac_date < NOW() AND pac_is_done = 0) THEN 'overdue'
+                    ELSE 'none'
+                END as activity_status"),
             ])
             ->leftJoin('partner_ptr', 'fk_ptr_id', '=', 'ptr_id')
             ->leftJoin('user_usr as seller', 'prospect_opportunity_opp.fk_usr_id_seller', '=', 'seller.usr_id');

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { Drawer, Form, Input, Button, Row, Col, Switch, Popconfirm, Tabs, Spin, Table, Card, Space } from "antd";
 import { message } from '../../utils/antdStatic';
 import { DeleteOutlined, SaveOutlined, PlusOutlined, DisconnectOutlined, LinkOutlined, LinkedinOutlined } from "@ant-design/icons";
@@ -7,18 +7,38 @@ import PartnerSelect from "../../components/select/PartnerSelect"
 import DeviceSelect from "../../components/select/DeviceSelect";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import CanAccess from "../../components/common/CanAccess";
+import ActivityTimeline from "../../components/crm/ActivityTimeline";
+import { usePermission } from "../../hooks/usePermission";
+const DuplicateContactModal = lazy(() => import("../../components/crm/DuplicateContactModal"));
+const HistoryTimeline = lazy(() => import("../../components/common/HistoryTimeline"));
 /**
  * Composant Contact
  * Formulaire d'édition dans un Drawer avec onglets Compte et Devices
  */
-export default function Contact({ contactId, open, onClose, onSubmit, initialValues = {} }) {
+const PARTNER_TYPE_DEFAULTS = {
+    prospect: { ptr_is_prospect: 1 },
+    customer: { ptr_is_customer: 1 },
+    supplier: { ptr_is_supplier: 1 },
+};
+
+const PARTNER_TYPE_PERMISSIONS = {
+    prospect: 'prospects.create',
+    customer: 'customers.create',
+    supplier: 'suppliers.create',
+};
+
+export default function Contact({ contactId, open, onClose, onSubmit, initialValues = {}, partnerType = null }) {
+    const { can } = usePermission();
     const [form] = Form.useForm();
     const [activeTab, setActiveTab] = useState('general');
     const [devices, setDevices] = useState([]);
     const [loadingDevices, setLoadingDevices] = useState(false);
     const [showDeviceSelector, setShowDeviceSelector] = useState(false);
+    const [dupModal, setDupModal] = useState({ open: false, action: 'update', duplicates: [], pendingValues: null, selectedId: null, newPartnerNames: [] });
 
-    const pageLabel = Form.useWatch('ctc_email', form);
+    const ctcFirstname = Form.useWatch('ctc_firstname', form);
+    const ctcLastname = Form.useWatch('ctc_lastname', form);
+    const pageLabel = [ctcFirstname, ctcLastname].filter(Boolean).join(' ') || null;
 
     // Hook pour sélection partenaires (multiple)
     const partnerIds = Form.useWatch('partner_ids', form);
@@ -92,15 +112,53 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
     });
 
     const handleFormSubmit = async (values) => {
+        // Vérification des doublons uniquement à la création
+        if (!contactId) {
+            try {
+                const res = await contactsApi.checkDuplicate(values);
+                if (res?.duplicates?.length > 0) {
+                    setDupModal({
+                        open: true,
+                        action: 'update',
+                        duplicates: res.duplicates,
+                        pendingValues: values,
+                        selectedId: res.duplicates[0].ctc_id,
+                        newPartnerNames: res.new_partner_names ?? [],
+                    });
+                    return;
+                }
+            } catch {
+                // En cas d'erreur réseau sur le check, on laisse passer la création
+            }
+        }
         await submit(values);
         form.resetFields();
+    };
+
+    const handleDuplicateConfirm = async () => {
+        const { action, pendingValues, selectedId, duplicates } = dupModal;
+        setDupModal(prev => ({ ...prev, open: false }));
+        try {
+            if (action === 'add') {
+                await submit(pendingValues);
+            } else {
+                const selected = duplicates.find(d => d.ctc_id === selectedId);
+                const existingPartnerIds = selected?.partner_ids ?? [];
+                const newPartnerIds = pendingValues.partner_ids ?? [];
+                const mergedPartnerIds = [...new Set([...existingPartnerIds, ...newPartnerIds])];
+                await submit({ ...pendingValues, ctc_id: selectedId, partner_ids: mergedPartnerIds });
+            }
+            form.resetFields();
+        } catch {
+            // useEntityForm affiche déjà l'erreur
+        }
     };
 
     const onFinishFailed = ({ errorFields }) => {
         if (errorFields.length > 0) {
             const firstErrorField = errorFields[0].name[0];
 
-            if (['partner_ids', 'ctc_firstname', 'ctc_lastname', 'ctc_email', 'ctc_phone', 'ctc_mobile', 'ctc_job_title', 'ctc_receive_invoice', 'ctc_receive_saleorder'].includes(firstErrorField)) {
+            if (['partner_ids', 'ctc_firstname', 'ctc_lastname', 'ctc_phone', 'ctc_mobile', 'ctc_job_title', 'ctc_receive_invoice', 'ctc_receive_saleorder'].includes(firstErrorField)) {
                 setActiveTab('general');
             }
 
@@ -118,7 +176,7 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
             const duplicatedValues = {
                 ...values,
                 ctc_id: undefined,
-                ctc_email: `${values.ctc_email}-copy`,
+                ctc_email: values.ctc_email ? `${values.ctc_email}-copy` : undefined,
             };
 
             const result = await submit(duplicatedValues, { closeDrawer: false });
@@ -246,6 +304,8 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
                                     <PartnerSelect
                                         loadInitially
                                         mode="multiple"
+                                        showAddButton={!!partnerType && can(PARTNER_TYPE_PERMISSIONS[partnerType])}
+                                        newPartnerDefaults={PARTNER_TYPE_DEFAULTS[partnerType] ?? {}}
                                     />
                                 </Form.Item>
                             </Col>
@@ -282,7 +342,6 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
                                     name="ctc_email"
                                     label="Email"
                                     rules={[
-                                        { required: true, message: "Email requis" },
                                         { type: 'email', message: "Email invalide" }
                                     ]}
                                 >
@@ -357,6 +416,22 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
         // Onglet Devices (uniquement pour contact existant)
         if (contactId) {
             items.push({
+                key: 'activities',
+                label: 'Activités',
+                children: (
+                    <ActivityTimeline
+                        contactId={contactId}
+                        contactInitialData={{
+                            ctc_id: contactId,
+                            ctc_firstname: ctcFirstname,
+                            ctc_lastname: ctcLastname,
+                        }}
+                        defaultPartnerId={partnerId}
+                        defaultPartnerInitialData={entity?.partners?.[0]}
+                    />
+                )
+            });
+            items.push({
                 key: 'devices',
                 label: 'Devices',
                 children: (
@@ -424,10 +499,22 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
                     </Spin>
                 )
             });
+
+
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<div style={{ padding: 16, textAlign: 'center' }}>Chargement...</div>}>
+                        <HistoryTimeline entityType="contact" entityId={contactId} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
-    }, [contactId, devices, loadingDevices, showDeviceSelector, PartnerSelect, DeviceSelect]);
+    }, [contactId, devices, loadingDevices, showDeviceSelector, PartnerSelect, DeviceSelect, ctcFirstname, ctcLastname, partnerId, entity]);
 
     /**
      * Fermeture du drawer
@@ -528,6 +615,23 @@ export default function Contact({ contactId, open, onClose, onSubmit, initialVal
                     />
                 </Form>
             </Spin>
+
+            {dupModal.open && (
+                <Suspense fallback={null}>
+                    <DuplicateContactModal
+                        open={dupModal.open}
+                        action={dupModal.action}
+                        duplicates={dupModal.duplicates}
+                        selectedId={dupModal.selectedId}
+                        pendingValues={dupModal.pendingValues}
+                        newPartnerNames={dupModal.newPartnerNames}
+                        onActionChange={(action) => setDupModal(prev => ({ ...prev, action }))}
+                        onSelectDuplicate={(id) => setDupModal(prev => ({ ...prev, selectedId: id }))}
+                        onConfirm={handleDuplicateConfirm}
+                        onCancel={() => setDupModal(prev => ({ ...prev, open: false }))}
+                    />
+                </Suspense>
+            )}
         </Drawer>
     );
 }

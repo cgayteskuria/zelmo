@@ -25,6 +25,7 @@ import WarehouseSelect from "../../components/select/WarehouseSelect";
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 const BizLineSelectionModal = lazy(() => import('../../components/bizdocument/BizLineSelectionModal'));
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
 
@@ -72,6 +73,7 @@ export default function PurchaseOrder() {
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [emailAttachments, setEmailAttachments] = useState([]);
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
     const [isLockedByDelivery, setIsLockedByDelivery] = useState(false);
 
@@ -1047,6 +1049,16 @@ export default function PurchaseOrder() {
                     </Suspense>
                 )
             });
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="purchase_order" entityId={purchaseOrderId} refreshKey={historyRefreshKey} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
@@ -1188,6 +1200,9 @@ export default function PurchaseOrder() {
                         documentId={purchaseOrderId}
                         partnerId={fkPtrId}
                         initialAttachments={emailAttachments}
+                        onSendSuccess={() => setHistoryRefreshKey(k => k + 1)}
+                        entityType="purchase_order"
+                        entityId={purchaseOrderId}
                     />
                 </Suspense>
             )}

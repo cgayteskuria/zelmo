@@ -20,6 +20,11 @@ class PurchaseOrderModel extends BizDocumentModel
     const CREATED_AT = 'por_created';
     const UPDATED_AT = 'por_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['por_number'];
+    }
+
     protected $guarded = [];
 
     /**

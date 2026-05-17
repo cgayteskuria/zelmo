@@ -26,6 +26,7 @@ import BizLineSelectionModal from "../../components/bizdocument/BizLineSelection
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 const PaymentsTab = lazy(() => import('../../components/bizdocument/PaymentsTab'));
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
 const EInvoicingInvoicePanel = lazy(() => import('../../components/einvoicing/EInvoicingInvoicePanel'));
@@ -81,6 +82,7 @@ export default function Invoice() {
     const [documentsCount, setDocumentsCount] = useState(undefined);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [emailAttachments, setEmailAttachments] = useState([]);
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const [refundModalOpen, setRefundModalOpen] = useState(false);
     const [fkTapId, setFkTapId] = useState(false);
 
@@ -906,6 +908,28 @@ export default function Invoice() {
                                 </Row>
                             </Col>
                             <Col span={6} style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+                             {(invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE || invOperation === INVOICE_OPERATION.CUSTOMER_REFUND) && (
+                                            <Row gutter={8}>
+                                                <Col span={24}>
+                                                    <Button
+                                                        size="default"
+                                                        icon={<CloudUploadOutlined />}
+                                                        onClick={handleTransmitInvoice}
+                                                        loading={transmitting}
+                                                        disabled={!!eInvoicingTransmission}
+                                                        style={{ width: '100%', margin: "4px" }}
+                                                        type={eInvoicingTransmission ? "default" : "default"}
+                                                    >
+                                                        {eInvoicingTransmission
+                                                            ? `${eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status} — ${eInvoicingTransmission.eit_transmitted_at
+                                                                ? dayjs(eInvoicingTransmission.eit_transmitted_at).format('DD/MM/YYYY HH:mm')
+                                                                : ''
+                                                            }`
+                                                            : "Transmettre via PDP"}
+                                                    </Button>
+                                                </Col>
+                                            </Row>
+                                        )}
                                 <Row gutter={8}>
                                     {statusActionButtons.map((btn) => (
                                         <Col span={24} key={btn.key}>
@@ -947,28 +971,7 @@ export default function Invoice() {
                                                 </Button>
                                             </Col>
                                         </Row>
-                                        {(invOperation === INVOICE_OPERATION.CUSTOMER_INVOICE || invOperation === INVOICE_OPERATION.CUSTOMER_REFUND) && (
-                                            <Row gutter={8}>
-                                                <Col span={24}>
-                                                    <Button
-                                                        size="default"
-                                                        icon={<CloudUploadOutlined />}
-                                                        onClick={handleTransmitInvoice}
-                                                        loading={transmitting}
-                                                        disabled={!!eInvoicingTransmission}
-                                                        style={{ width: '100%', margin: "4px" }}
-                                                        type={eInvoicingTransmission ? "default" : "default"}
-                                                    >
-                                                        {eInvoicingTransmission
-                                                            ? `${eInvoicingTransmission.eit_status_label ?? eInvoicingTransmission.eit_status} — ${eInvoicingTransmission.eit_transmitted_at
-                                                                ? dayjs(eInvoicingTransmission.eit_transmitted_at).format('DD/MM/YYYY HH:mm')
-                                                                : ''
-                                                            }`
-                                                            : "Transmettre via PDP"}
-                                                    </Button>
-                                                </Col>
-                                            </Row>
-                                        )}
+                                       
                                     </>
                                 )}
                                 {invoiceId && (
@@ -1137,6 +1140,16 @@ export default function Invoice() {
                     )
                 });
             }
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="invoice" entityId={invoiceId} refreshKey={historyRefreshKey} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
@@ -1260,6 +1273,9 @@ export default function Invoice() {
                         partnerId={fkPtrId}
                         defaultRecipientId={fkCtcId}
                         initialAttachments={emailAttachments}
+                        onSendSuccess={() => setHistoryRefreshKey(k => k + 1)}
+                        entityType="invoice"
+                        entityId={invoiceId}
                     />
                 </Suspense>
             )}

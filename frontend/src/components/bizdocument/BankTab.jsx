@@ -1,25 +1,29 @@
 import { useState, useEffect } from "react";
-import { Button, Table } from "antd";
-import { PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, StarFilled } from "@ant-design/icons";
+import { App, Button, Input, Modal, Table, Tooltip } from "antd";
+import { BankOutlined, CheckCircleOutlined, CloseCircleOutlined, CopyOutlined, PlusOutlined, StarFilled } from "@ant-design/icons";
 import { createEditActionColumn } from "../table/EditActionColumn";
 import BankModal from "./BankModal";
 import { bankDetailsApi } from "../../services/api";
+import { generateMandateLink } from "../../services/apiMandate";
 import CanAccess from "../common/CanAccess";
 
-/**
- * Composant BankTab
- * Affiche la liste des comptes bancaires d'une entité (Partner ou Company)
- * avec possibilité d'ajouter/éditer
- */
 export default function BankTab({
-    entityType = "partner", // "partner" ou "company"
+    entityType = "partner",
     entityId = null,
-    permission = "partners.edit"
+    permission = "partners.edit",
+    isCustomer = false,
+    partnerName = "",
 }) {
+    const { message } = App.useApp();
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedBankId, setSelectedBankId] = useState(null);
+
+    const [mandateLoading, setMandateLoading] = useState(false);
+    const [mandateModalOpen, setMandateModalOpen] = useState(false);
+    const [mandateUrl, setMandateUrl] = useState(null);
+    const [mandateExpiresAt, setMandateExpiresAt] = useState(null);
 
     useEffect(() => {
         if (entityId) {
@@ -62,6 +66,31 @@ export default function BankTab({
         loadData();
     };
 
+    const handleGenerateMandate = async () => {
+        setMandateLoading(true);
+        try {
+            const res = await generateMandateLink(entityId);
+            setMandateUrl(res.data.mandate_url);
+            setMandateExpiresAt(res.data.expires_at);
+            setMandateModalOpen(true);
+        } catch (err) {
+            message.error(err.message || "Erreur lors de la génération du lien mandat");
+        } finally {
+            setMandateLoading(false);
+        }
+    };
+
+    const handleCopyUrl = () => {
+        if (mandateUrl) {
+            navigator.clipboard.writeText(mandateUrl);
+            message.success("Lien copié dans le presse-papier !");
+        }
+    };
+
+    const expiryLabel = mandateExpiresAt
+        ? new Date(mandateExpiresAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+        : null;
+
     const columns = [
         { dataIndex: "bts_bnal_address", title: "Dom.", width: 100 },
         { dataIndex: "bts_iban", title: "IBAN" },
@@ -97,7 +126,20 @@ export default function BankTab({
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                {entityType === 'partner' && isCustomer && (
+                    <CanAccess permission={permission}>
+                        <Tooltip title={`Mettre en place un prélèvement auprès de ${partnerName || 'ce client'}`}>
+                            <Button
+                                icon={<BankOutlined />}
+                                onClick={handleGenerateMandate}
+                                loading={mandateLoading}
+                            >
+                                Mandat Client
+                            </Button>
+                        </Tooltip>
+                    </CanAccess>
+                )}
                 <CanAccess permission={permission}>
                     <Button
                         type="primary"
@@ -132,6 +174,39 @@ export default function BankTab({
                     entityId={entityId}
                 />
             )}
+
+            <Modal
+                title="Lien de mandat SEPA"
+                open={mandateModalOpen}
+                onCancel={() => setMandateModalOpen(false)}
+                footer={[
+                    <Button key="copy" type="primary" icon={<CopyOutlined />} onClick={handleCopyUrl}>
+                        Copier le lien
+                    </Button>,
+                    <Button key="close" onClick={() => setMandateModalOpen(false)}>
+                        Fermer
+                    </Button>,
+                ]}
+            >
+                <p>
+                    Le lien ci-dessous a été généré
+                    {partnerName ? ` pour <strong>${partnerName}</strong>` : ''}.
+                    {' '}Un email a été envoyé au partenaire. Le lien est valable <strong>30 jours</strong>.
+                </p>
+                <Input
+                    value={mandateUrl || ''}
+                    readOnly
+                    style={{ marginBottom: 8 }}
+                    addonAfter={
+                        <CopyOutlined onClick={handleCopyUrl} style={{ cursor: 'pointer' }} />
+                    }
+                />
+                {expiryLabel && (
+                    <p style={{ margin: 0, color: '#888', fontSize: 12 }}>
+                        Expire le {expiryLabel}
+                    </p>
+                )}
+            </Modal>
         </div>
     );
 }

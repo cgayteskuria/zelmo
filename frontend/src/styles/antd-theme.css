@@ -8,6 +8,12 @@
   display: none !important;
 }
 
+/* ── Messages globaux — positionnés en haut à droite ─────────── */
+.ant-message {
+  text-align: right !important;
+  padding-right: 24px !important;
+}
+
 /* ── Table — carte avec bordure arrondie ─────────────────────── */
 
 .ant-table-wrapper {

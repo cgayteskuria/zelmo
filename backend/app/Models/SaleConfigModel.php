@@ -45,11 +45,6 @@ class SaleConfigModel extends BaseModel
         return $this->belongsTo(MessageTemplateModel::class, 'fk_emt_id_sale', 'emt_id');
     }
 
-    public function tokenRenewTemplate(): BelongsTo
-    {
-        return $this->belongsTo(MessageTemplateModel::class, 'fk_emt_id_token_renew', 'emt_id');
-    }
-
     public function saleConfirmationTemplate(): BelongsTo
     {
         return $this->belongsTo(MessageTemplateModel::class, 'fk_emt_id_sale_confirmation', 'emt_id');
@@ -63,5 +58,30 @@ class SaleConfigModel extends BaseModel
     public function emailAccount(): BelongsTo
     {
         return $this->belongsTo(MessageEmailAccountModel::class, 'fk_eml_id', 'eml_id');
+    }
+
+    public function commitmentDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_commitment', 'dur_id');
+    }
+
+    public function renewDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_renew', 'dur_id');
+    }
+
+    public function noticeDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_notice', 'dur_id');
+    }
+
+    public function invoicingDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_invoicing', 'dur_id');
+    }
+
+    public function paymentCondition(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_payment_condition', 'dur_id');
     }
 }

@@ -26,6 +26,10 @@ class ContractLineModel extends BizDocumentLineModel
     public const CATEGORY_MAIN = 0;
     public const CATEGORY_OPTION = 1;
 
+    // Statut d'activation de la ligne (pour les contrats issus d'une signature)
+    public const STATUS_PENDING = 0; // En attente d'activation
+    public const STATUS_ACTIVE  = 1; // Active (facturable)
+
     /**
      * Hook de démarrage du modèle
      */
@@ -93,12 +97,14 @@ class ContractLineModel extends BizDocumentLineModel
             'line_type' => 'col_type',
             'order' => 'col_order',
             'is_subscription' => 'col_is_subscription',
+            'col_status'      => 'col_status',
+            'fk_orl_id'       => 'fk_orl_id',
             'prt_lib' => 'col_prtlib',
             'prt_desc' => 'col_prtdesc',
             'prt_type' => 'col_prttype',
             'note' => 'col_note',
             'author_id' => 'fk_usr_id_author',
-            'updater_id' => 'fk_usr_id_updater',            
+            'updater_id' => 'fk_usr_id_updater',
         ];
     }
 

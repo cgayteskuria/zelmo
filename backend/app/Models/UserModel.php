@@ -140,6 +140,9 @@ class UserModel extends Authenticatable
         'usr_gridsettings',
         'clts_id',
         'cltsexclu_id',
+        'usr_enrichment_credits_limit',
+        'usr_enrichment_credits_used',
+        'usr_enrichment_credits_reset_at',
     ];
 
     /**
@@ -235,6 +238,40 @@ class UserModel extends Authenticatable
     public function teamMembers()
     {
         return $this->hasMany(UserModel::class, 'fk_usr_id_manager', 'usr_id');
+    }
+
+    /**
+     * Commerciaux supervisés par ce manager (table pivot user_manager_seller_ums)
+     */
+    public function managedSellers()
+    {
+        return $this->belongsToMany(
+            UserModel::class,
+            'user_manager_seller_ums',
+            'fk_usr_id_manager',
+            'fk_usr_id_seller'
+        );
+    }
+
+    /**
+     * Managers qui supervisent ce commercial
+     */
+    public function supervisingManagers()
+    {
+        return $this->belongsToMany(
+            UserModel::class,
+            'user_manager_seller_ums',
+            'fk_usr_id_seller',
+            'fk_usr_id_manager'
+        );
+    }
+
+    /**
+     * IDs des commerciaux visibles par ce manager
+     */
+    public function getVisibleSellerIds(): array
+    {
+        return $this->managedSellers()->pluck('usr_id')->toArray();
     }
 
     /**

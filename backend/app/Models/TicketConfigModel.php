@@ -21,7 +21,8 @@ class TicketConfigModel extends BaseModel
      * Casts
      */
     protected $casts = [
-        'tco_send_acknowledgment' => 'boolean',
+        'tco_send_acknowledgment'          => 'boolean',
+        'tco_email_collection_interval'    => 'integer',
     ];
 
     /**

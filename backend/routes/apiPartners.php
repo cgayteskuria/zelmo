@@ -7,6 +7,7 @@
     use App\Http\Controllers\Api\ApiPartnerController;
     use App\Http\Controllers\Api\ApiContactController;
     use App\Http\Controllers\Api\ApiDocumentController;
+    use App\Http\Controllers\Api\ApiMandateController;
 
 
     Route::middleware('auth:sanctum')->post('/entreprises', [ApiPartnerController::class, 'store']);
@@ -58,6 +59,8 @@
                 // Route::middleware('permission:partners.edit')->group(function () {
                 Route::put('/{id}', [ApiPartnerController::class, 'update']);
                 Route::patch('/{id}', [ApiPartnerController::class, 'update']);
+                Route::post('/{id}/mandate', [ApiMandateController::class, 'generateMandateLink']);
+                Route::post('/{id}/archive-prospect', [ApiPartnerController::class, 'archiveProspect']);
             });
 
             // Routes de suppression (permission: partners.delete)

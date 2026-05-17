@@ -14,6 +14,10 @@ class ProspectActivityModel extends BaseModel
 
     protected $guarded = ['pac_id'];
 
+    protected $casts = [
+        'pac_is_done' => 'boolean',
+    ];
+
     public function opportunity()
     {
         return $this->belongsTo(ProspectOpportunityModel::class, 'fk_opp_id', 'opp_id');
@@ -27,6 +31,16 @@ class ProspectActivityModel extends BaseModel
     public function contact()
     {
         return $this->belongsTo(ContactModel::class, 'fk_ctc_id', 'ctc_id');
+    }
+
+    public function contacts()
+    {
+        return $this->belongsToMany(
+            ContactModel::class,
+            'prospect_activity_contact_pac',
+            'fk_pac_id',
+            'fk_ctc_id'
+        );
     }
 
     public function seller()

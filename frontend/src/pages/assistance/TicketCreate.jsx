@@ -355,7 +355,7 @@ export default function TicketCreate() {
                                     label={<><TeamOutlined /> Assigné à</>}
                                     style={{ marginBottom: 0 }}
                                 >
-                                    <UserSelect loadInitially disabled={!partnerId} />
+                                    <UserSelect loadInitially filters={{ is_technician: 1 }} disabled={!partnerId} />
                                 </Form.Item>
                             </Col>
                         </Row>

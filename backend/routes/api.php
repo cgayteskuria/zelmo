@@ -72,10 +72,13 @@ use App\Http\Controllers\Api\ApiTimeConfigController;
 use App\Http\Controllers\Api\ApiTimeReportController;
 use App\Http\Controllers\Api\ApiSequenceController;
 use App\Http\Controllers\Api\ApiAccountVatDeclarationController;
-use App\Http\Controllers\Api\ApiAccountVatBoxController;
 use App\Http\Controllers\Api\ApiEInvoicingController;
 use App\Http\Controllers\Api\ApiCountryController;
 use App\Http\Controllers\Webhooks\EInvoicingWebhookController;
+use App\Http\Controllers\Api\ApiSignatureController;
+use App\Http\Controllers\Api\ApiMandateController;
+use App\Http\Controllers\Api\ApiHistoryController;
+use App\Http\Controllers\Api\ApiCrmEnrichmentController;
 
 require base_path('routes/apiExpense.php');
 require base_path('routes/apiPartners.php');
@@ -90,6 +93,21 @@ Route::prefix('auth')->group(function () {
 
 // Public company branding (used on login page, no auth required)
 Route::get('/company/public-branding', [ApiCompanyController::class, 'publicBranding']);
+
+// Signature électronique — routes publiques (sans authentification)
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/public/sign/{token}', [ApiSignatureController::class, 'showSigningPage']);
+    Route::post('/public/sign/{token}', [ApiSignatureController::class, 'sign'])
+        ->middleware('throttle:20,1');
+    Route::get('/public/cgv', [ApiSignatureController::class, 'serveCgv']);
+});
+
+// Mandat SEPA — routes publiques (sans authentification)
+Route::middleware('throttle:20,1')->group(function () {
+    Route::get('/public/mandate/{token}', [ApiMandateController::class, 'getMandate']);
+    Route::post('/public/mandate/{token}', [ApiMandateController::class, 'submit'])
+        ->middleware('throttle:5,1');
+});
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -968,6 +986,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('permission:settings.saleorderconf.edit')->group(function () {
             Route::put('/{id}', [ApiSaleOrderConfigController::class, 'update']);
             Route::patch('/{id}', [ApiSaleOrderConfigController::class, 'update']);
+            Route::post('/{id}/upload-cgv', [ApiSaleOrderConfigController::class, 'uploadCgv']);
         });
     });
 
@@ -1198,12 +1217,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/purchase-orders/{id}/products-to-receive', [ApiDeliveryNoteController::class, 'getProductsToReceive']);
     });
 
+    // Contacts prospects (contacts liés à des sociétés prospects)
+    Route::middleware('permission:prospects.view')->group(function () {
+        Route::get('prospect-contacts', [ApiContactController::class, 'prospectContacts']);
+    });
+
+    // Contacts clients (contacts liés à des sociétés clientes)
+    Route::middleware('permission:contacts.view')->group(function () {
+        Route::get('customer-contacts', [ApiContactController::class, 'customerContacts']);
+    });
+
+    // Contacts fournisseurs (contacts liés à des sociétés fournisseurs)
+    Route::middleware('permission:contacts.view')->group(function () {
+        Route::get('supplier-contacts', [ApiContactController::class, 'supplierContacts']);
+    });
+
     // Contacts - Routes avec permissions granulaires
     Route::prefix('contacts')->group(function () {
         // Routes de consultation (permission: contacts.view)
         Route::middleware('permission:contacts.view')->group(function () {
             Route::get('', [ApiContactController::class, 'index']);
             Route::get('options', [ApiContactController::class, 'options']);
+            Route::post('check-duplicate', [ApiContactController::class, 'checkDuplicate']);
             Route::get('/{id}', [ApiContactController::class, 'show']);
             Route::get('/{contactId}/devices', [ApiContactController::class, 'getDevices']);
         });
@@ -1278,7 +1313,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sale-orders')->group(function () {
         // Routes de consultation (permission: sale-orders.view)
         Route::middleware('permission:sale-orders.view')->group(function () {
-            Route::get('', [ApiSaleOrderController::class, 'index']);
+            Route::get('', [ApiSaleOrderController::class, 'indexOrders']);
             Route::get('/{id}', [ApiSaleOrderController::class, 'show']);
             Route::get('/{id}/lines', [ApiSaleOrderController::class, 'getLines'])->name('sale-orders.lines');
             Route::get('/{orderId}/linked-objects', [ApiSaleOrderController::class, 'getLinkedObjects'])->name('sale-orders.linked-objects');
@@ -1314,11 +1349,25 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/{orderId}/generate-invoice', [ApiSaleOrderController::class, 'generateInvoiceAndContract'])->name('sale-orders.generate-invoice-and-contract');
         });
 
+        // Livraison / réalisation / activation abonnements
+        Route::middleware('permission:sale-orders.edit')->group(function () {
+            Route::post('/{orderId}/deliver-lines', [ApiSaleOrderController::class, 'deliverLines'])->name('sale-orders.deliver-lines');
+        });
+
         // Routes de modification (permission: sale-orders.edit)
         Route::middleware('permission:sale-orders.edit')->group(function () {
             Route::put('/{id}', [ApiSaleOrderController::class, 'update']);
             Route::patch('/{id}', [ApiSaleOrderController::class, 'update']);
             Route::put('/{orderId}/lines/order', [ApiSaleOrderController::class, 'updateLinesOrder'])->name('sale-orders.update-lines-order');
+            Route::post('/{id}/send-signature-request', [ApiSignatureController::class, 'sendRequest'])
+                ->defaults('docType', 'sale_order')
+                ->name('sale-orders.send-signature-request');
+            Route::post('/{id}/prepare-signature', [ApiSignatureController::class, 'prepareToken'])
+                ->defaults('docType', 'sale_order')
+                ->name('sale-orders.prepare-signature');
+            Route::patch('/{id}/signature-signer-email', [ApiSignatureController::class, 'storeSignerEmail'])
+                ->defaults('docType', 'sale_order')
+                ->name('sale-orders.signature-signer-email');
         });
 
         // Routes de suppression (permission: sale-orders.delete)
@@ -1540,6 +1589,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/{id}', [ApiContractController::class, 'update']);
             Route::put('/{contractId}/lines/order', [ApiContractController::class, 'updateLinesOrder'])->name('contracts.update-lines-order');
             Route::post('/{contractId}/terminate', [ApiContractController::class, 'terminate'])->name('contracts.terminate');
+            Route::post('/{id}/send-signature-request', [ApiSignatureController::class, 'sendRequest'])
+                ->defaults('docType', 'contract')
+                ->name('contracts.send-signature-request');
+            Route::post('/{id}/prepare-signature', [ApiSignatureController::class, 'prepareToken'])
+                ->defaults('docType', 'contract')
+                ->name('contracts.prepare-signature');
+            Route::patch('/{id}/signature-signer-email', [ApiSignatureController::class, 'storeSignerEmail'])
+                ->defaults('docType', 'contract')
+                ->name('contracts.signature-signer-email');
         });
 
         // Routes de suppression (permission: contracts.delete)
@@ -1645,6 +1703,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('permission:users.delete')->group(function () {
             Route::delete('/{id}', [ApiUserController::class, 'destroy']);
         });
+    });
+
+    // Commerciaux supervisés par un manager
+    Route::prefix('users/{id}/managed-sellers')->middleware('permission:users.edit')->group(function () {
+        Route::get('', [ApiUserController::class, 'getManagedSellers']);
+        Route::post('', [ApiUserController::class, 'syncManagedSellers']);
     });
 
     // Routes pour la gestion des permissions utilisateur (nécessite permission: users.edit)
@@ -1787,8 +1851,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('prospect-activities')->group(function () {
         Route::middleware('permission:opportunities.view')->group(function () {
             Route::get('', [ApiProspectActivityController::class, 'index']);
+            Route::get('/calendar', [ApiProspectActivityController::class, 'calendar']);
             Route::get('/upcoming', [ApiProspectActivityController::class, 'upcoming']);
             Route::get('/by-partner/{ptrId}', [ApiProspectActivityController::class, 'byPartner']);
+            Route::get('/by-contact/{ctcId}', [ApiProspectActivityController::class, 'byContact']);
             Route::get('/{id}', [ApiProspectActivityController::class, 'show']);
         });
         Route::middleware('permission:opportunities.create')->group(function () {
@@ -1808,10 +1874,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('permission:opportunities.view')->group(function () {
         Route::get('/opportunities/{oppId}/activities', [ApiProspectActivityController::class, 'byOpportunity']);
     });
-
-    // Cases de déclaration TVA (mapping comptable)
-    Route::get('/vat-boxes',          [ApiAccountVatBoxController::class, 'index'])->middleware('permission:accountings.view');
-    Route::put('/vat-boxes/accounts', [ApiAccountVatBoxController::class, 'updateAccounts'])->middleware('permission:accountings.edit');
 
     // Déclarations TVA (CA3 / CA12)
     Route::prefix('vat-declarations')->middleware('permission:accountings.view')->group(function () {
@@ -1884,11 +1946,38 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/ereporting/transmit',   [ApiEInvoicingController::class, 'transmitEReporting']);
         });
     });
+
+    // ── Historique / Audit ──────────────────────────────────────────────────
+    Route::prefix('history')->group(function () {
+        Route::get('/{entityType}/{entityId}', [ApiHistoryController::class, 'index'])
+            ->name('history.index');
+    });
+
+    // ── CRM Enrichissement ──────────────────────────────────────────────────
+    Route::prefix('crm-enrichment')->group(function () {
+        Route::middleware('permission:enrichment.search')->group(function () {
+            Route::post('/search',         [ApiCrmEnrichmentController::class, 'search']);
+            Route::get('/check-exists',    [ApiCrmEnrichmentController::class, 'checkExists']);
+            Route::post('/import-person',  [ApiCrmEnrichmentController::class, 'importPerson']);
+        });
+        Route::middleware('permission:enrichment.reveal')->group(function () {
+            Route::post('/reveal',              [ApiCrmEnrichmentController::class, 'reveal']);
+            Route::get('/reveal/{id}',          [ApiCrmEnrichmentController::class, 'revealStatus']);
+            Route::get('/enrich-organization',  [ApiCrmEnrichmentController::class, 'enrichOrganization']);
+        });
+        Route::middleware('permission:enrichment.settings')->group(function () {
+            Route::get('/config',         [ApiCrmEnrichmentController::class, 'getConfig']);
+            Route::put('/config',         [ApiCrmEnrichmentController::class, 'updateConfig']);
+            Route::post('/test',          [ApiCrmEnrichmentController::class, 'testConnection']);
+        });
+    });
 });
 
 // -----------------------------------------------------------------------
 // Webhooks PA/PDP — Routes publiques (hors auth Sanctum), sécurisées par HMAC
 // -----------------------------------------------------------------------
+Route::post('/crm-enrichment/webhook', [ApiCrmEnrichmentController::class, 'webhook']);
+
 Route::prefix('webhooks/einvoicing')->group(function () {
     Route::post('/facture/cycledevie/{invoiceId}', [EInvoicingWebhookController::class, 'handleLifecycleEvent']);
     Route::post('/donneesfacturation/{invoiceId}', [EInvoicingWebhookController::class, 'handleBillingData']);

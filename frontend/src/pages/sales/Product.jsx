@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, lazy, Suspense } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import CustomInputNumber from "../../components/common/CustomInputNumber";
 import { Drawer, Form, Input, Button, Row, Col, Switch, Popconfirm, Tabs, Spin, Statistic, Card, Table, Space, Select } from "antd";
 import { message } from '../../utils/antdStatic';
 import { DeleteOutlined, SaveOutlined, PlusOutlined, ToolOutlined } from "@ant-design/icons";
 import { productsApi } from "../../services/api";
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 import TaxSelect from "../../components/select/TaxSelect";
 import AccountSelect from "../../components/select/AccountSelect";
 import { useEntityForm } from "../../hooks/useEntityForm";
@@ -26,6 +28,30 @@ export default function Product({ productId, open, onClose, onSubmit, drawerSize
     const isSellable = Form.useWatch('prt_is_sellable', form);
     const prtType = Form.useWatch('prt_type', form);
     const prtStockable = Form.useWatch('prt_stockable', form);
+
+    const { acoVatRegime } = useAuth();
+
+    const taxPurchaseFilters = useMemo(() => {
+        const base = { tax_use: 'purchase', tax_is_active: 1 };
+        if (prtType === 'conso') return { ...base, tax_scope: 'conso', tax_exigibility: 'on_invoice' };
+        if (prtType === 'service' || prtType === 'all') return {
+            ...base,
+            tax_scope: prtType === 'all' ? undefined : 'service',
+            tax_exigibility: acoVatRegime === 'encaissements' ? 'on_payment' : 'on_invoice',
+        };
+        return base;
+    }, [prtType, acoVatRegime]);
+
+    const taxSaleFilters = useMemo(() => {
+        const base = { tax_use: 'sale', tax_is_active: 1 };
+        if (prtType === 'conso') return { ...base, tax_scope: 'conso', tax_exigibility: 'on_invoice' };
+        if (prtType === 'service' || prtType === 'all') return {
+            ...base,
+            tax_scope: prtType === 'all' ? undefined : 'service',
+            tax_exigibility: acoVatRegime === 'encaissements' ? 'on_payment' : 'on_invoice',
+        };
+        return base;
+    }, [prtType, acoVatRegime]);
 
     useEffect(() => {
         if (productId && open && prtStockable) {
@@ -281,7 +307,9 @@ export default function Product({ productId, open, onClose, onSubmit, drawerSize
                                     rules={[{ required: true, message: "Tva Achat requis" }]}
                                 >
                                     <TaxSelect
-                                        filters={{ tax_use: 'purchase', tax_is_active: 1, ...(prtType ? { tax_scope: prtType } : {}) }} />
+                                        key={prtType ?? '__no_type__'}
+                                        filters={taxPurchaseFilters}
+                                    />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -311,7 +339,10 @@ export default function Product({ productId, open, onClose, onSubmit, drawerSize
                                     label="TVA sur vente"
                                     rules={[{ required: true, message: "Tva vente requis" }]}
                                 >
-                                    <TaxSelect filters={{ tax_use: 'sale', tax_is_active: 1, ...(prtType ? { tax_scope: prtType } : {}) }} />
+                                    <TaxSelect
+                                        key={prtType ?? '__no_type__'}
+                                        filters={taxSaleFilters}
+                                    />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -348,29 +379,34 @@ export default function Product({ productId, open, onClose, onSubmit, drawerSize
                     <div className="box">
                         <Row gutter={[16, 8]}>
 
-                            <Col span={12}>
-                                <Form.Item
-                                    name="fk_acc_id_purchase" label="Compte achat"
-                                >
-                                    <AccountSelect
-                                        filters={{ type: ['expense', 'expense_direct_cost'], isActive: true }}
-                                        loadInitially={!productId ? true : false}
-                                        initialData={entity?.account_purchase}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="fk_acc_id_sale" label="Compte vente" 
-                                >
-                                    <AccountSelect
-                                        filters={{ type: ['income'], isActive: true }}
-                                        loadInitially={!productId ? true : false}
-                                        initialData={entity?.account_sale}
-
-                                    />
-                                </Form.Item>
-                            </Col>
+                            {isPurchasable && (
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="fk_acc_id_purchase" label="Compte achat"
+                                    >
+                                        <AccountSelect
+                                            filters={{ type: ['expense', 'expense_direct_cost'], isActive: true }}
+                                            loadInitially={!productId ? true : false}
+                                            initialData={entity?.account_purchase}
+                                            allowClear
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            )}
+                            {isSellable && (
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="fk_acc_id_sale" label="Compte vente"
+                                    >
+                                        <AccountSelect
+                                            filters={{ type: ['income'], isActive: true }}
+                                            loadInitially={!productId ? true : false}
+                                            initialData={entity?.account_sale}
+                                            allowClear
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            )}
                         </Row>
                     </div>
                 )
@@ -488,6 +524,19 @@ export default function Product({ productId, open, onClose, onSubmit, drawerSize
                 )
             });
         }
+
+        if (productId) {
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<div style={{ padding: 16, textAlign: 'center' }}>Chargement...</div>}>
+                        <HistoryTimeline entityType="product" entityId={productId} />
+                    </Suspense>
+                )
+            });
+        }
+
         return items;
     }, [isPurchasable, isSellable, prtStockable, prtType, productId, stockData, warehouseStocks, loadingStock]);
 

@@ -74,7 +74,7 @@ export default function RichTextEditor({
                 content_css: false,
                 content_style: [contentCss, contentUiCss].join("\n"),
                 height,
-                min_height: 250,
+                min_height: height,
                 resize: true,
                 placeholder: placeholder || "Saisir le contenu...",
                 branding: false,

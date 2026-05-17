@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\TicketConfigModel;
+use App\Services\FetchEmailTicketsService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -35,11 +36,12 @@ class ApiTicketConfigController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'fk_eml_id' => 'nullable|exists:message_email_account_eml,eml_id',
-                'tco_send_acknowledgment' => 'nullable|boolean',
-                'fk_emt_id_acknowledgment' => 'nullable|exists:message_template_emt,emt_id',
-                'fk_emt_id_affectation' => 'nullable|exists:message_template_emt,emt_id',
-                'fk_emt_id_answer' => 'nullable|exists:message_template_emt,emt_id',
+                'fk_eml_id'                      => 'nullable|exists:message_email_account_eml,eml_id',
+                'tco_email_collection_interval'  => 'nullable|integer|in:5,10,15,30,60',
+                'tco_send_acknowledgment'        => 'nullable|boolean',
+                'fk_emt_id_acknowledgment'       => 'nullable|exists:message_template_emt,emt_id',
+                'fk_emt_id_affectation'          => 'nullable|exists:message_template_emt,emt_id',
+                'fk_emt_id_answer'               => 'nullable|exists:message_template_emt,emt_id',
             ]);
 
             // Si tco_send_acknowledgment est true, fk_emt_id_acknowledgment devient requis
@@ -91,34 +93,15 @@ class ApiTicketConfigController extends Controller
     public function forceEmailCollection(Request $request)
     {
         try {
-            // TODO: Implémenter la logique de collecte des emails
-            // Cette méthode devrait appeler un service qui:
-            // 1. Se connecte au compte email configuré
-            // 2. Récupère les nouveaux emails
-            // 3. Crée des tickets à partir des emails
-            // 4. Marque les emails comme traités
-
-            // Pour l'instant, on retourne un message simulé
-            // À implémenter selon votre logique métier existante
-
-            $limit = $request->input('limit', 50);
-
-            // Exemple de ce qui devrait être fait:
-            // $ticketService = new TicketEmailService();
-            // $result = $ticketService->collectEmailsAndCreateTickets($limit);
-
-            // Simulation de réponse
-            $result = [
-                'success' => true,
-                'processed' => 0,
-                'errors' => [],
-                'message' => 'Collecte des emails en cours de développement. Cette fonctionnalité nécessite l\'implémentation du service de collecte d\'emails.'
-            ];
+            $limit   = (int) $request->input('limit', 50);
+            $service = new FetchEmailTicketsService(new \App\Services\EmailService());
+            $result  = $service->fetchAndCreateTickets($limit);
 
             return response()->json([
-                'success' => $result['success'],
-                'errors' => $result['errors'] ?? [],
-                'message' => $result['message'] ?? "{$result['processed']} ticket(s) créé(s) depuis les emails"
+                'success'   => empty($result['errors']),
+                'processed' => $result['processed'],
+                'errors'    => $result['errors'],
+                'message'   => "{$result['processed']} ticket(s) créé(s) depuis les emails",
             ]);
         } catch (\Exception $e) {
             return response()->json([

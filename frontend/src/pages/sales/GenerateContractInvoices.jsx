@@ -52,12 +52,15 @@ export default function GenerateContractInvoices() {
           const nextInvoiceDate = dayjs(contract.con_next_invoice_date);
           const today = dayjs().startOf("day");
 
-          const isEligible = nextInvoiceDate.valueOf() <= today.valueOf();
+          // Les contrats résiliés avec solde restant sont toujours éligibles,
+          // quelle que soit la date : le client doit les mois jusqu'à la fin d'engagement
+          const isTerminatedWithRemaining = contract.con_status === 3 && contract.con_invoice_remaining === 1;
+          const isEligible = isTerminatedWithRemaining || nextInvoiceDate.valueOf() <= today.valueOf();
 
           return {
             ...contract,
             isEligible,
-            daysOverdue: isEligible
+            daysOverdue: (!isTerminatedWithRemaining && isEligible)
               ? today.diff(nextInvoiceDate, "days")
               : null,
           };

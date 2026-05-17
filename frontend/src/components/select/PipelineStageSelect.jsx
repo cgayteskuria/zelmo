@@ -9,6 +9,8 @@ export default function PipelineStageSelect({
     initialData = null,
     loadInitially = false,
     onChange,
+    selectDefault = false,
+    onDefaultSelected = null,
     ...props
 }) {
     const initialOptions = useMemo(() => {
@@ -34,6 +36,8 @@ export default function PipelineStageSelect({
         filters,
         loadInitially,
         initialOptions,
+        selectDefault,
+        onDefaultSelected,
     });
 
     return (

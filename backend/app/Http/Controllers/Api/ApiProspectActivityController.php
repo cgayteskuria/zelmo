@@ -33,7 +33,8 @@ class ApiProspectActivityController extends Controller
         }
 
         $user = Auth::user();
-        $canViewAll = $user->can('prospect-activities.view_all');
+        $canViewAll  = $user->can('prospect-activities.view_all');
+        $canViewTeam = $user->can('prospect-activities.view_team');
 
         $query = ProspectActivityModel::query()
             ->select([
@@ -44,17 +45,25 @@ class ApiProspectActivityController extends Controller
                 'pac_due_date',
                 'pac_is_done',
                 'pac_done_date',
-                'pac_duration',
                 'ptr_name',
                 'opp_label',
                 DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
+                DB::raw("(SELECT GROUP_CONCAT(CONCAT(c.ctc_firstname, ' ', c.ctc_lastname) ORDER BY c.ctc_lastname SEPARATOR ', ')
+                          FROM prospect_activity_contact_pac pacc
+                          JOIN contact_ctc c ON pacc.fk_ctc_id = c.ctc_id
+                          WHERE pacc.fk_pac_id = prospect_activity_pac.pac_id) as contact_names"),
             ])
             ->leftJoin('partner_ptr', 'prospect_activity_pac.fk_ptr_id', '=', 'ptr_id')
             ->leftJoin('prospect_opportunity_opp', 'prospect_activity_pac.fk_opp_id', '=', 'opp_id')
             ->leftJoin('user_usr as seller', 'prospect_activity_pac.fk_usr_id_seller', '=', 'seller.usr_id');
 
         if (!$canViewAll) {
-            $query->where('prospect_activity_pac.fk_usr_id_seller', $user->usr_id);
+            if ($canViewTeam) {
+                $visibleIds = array_merge([$user->usr_id], $user->getVisibleSellerIds());
+                $query->whereIn('prospect_activity_pac.fk_usr_id_seller', $visibleIds);
+            } else {
+                $query->where('prospect_activity_pac.fk_usr_id_seller', $user->usr_id);
+            }
         }
 
         // Filtre "à faire uniquement"
@@ -121,7 +130,6 @@ class ApiProspectActivityController extends Controller
                 'pac_due_date',
                 'pac_is_done',
                 'pac_done_date',
-                'pac_duration',
                 'fk_opp_id',
                 'fk_ptr_id',
                 'fk_ctc_id',
@@ -142,37 +150,28 @@ class ApiProspectActivityController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'pac_type' => 'required|string|in:call,email,meeting,note,task',
-            'pac_subject' => 'required|string|max:255',
-            'pac_description' => 'nullable|string',
-            'pac_date' => 'required|date',
-            'pac_due_date' => 'nullable|date',
-            'pac_is_done' => 'sometimes|boolean',
-            'pac_duration' => 'nullable|integer|min:0',
-            'fk_opp_id' => 'nullable|exists:prospect_opportunity_opp,opp_id',
-            'fk_ptr_id' => 'required|exists:partner_ptr,ptr_id',
-            'fk_ctc_id' => 'nullable|exists:contact_ctc,ctc_id',
-            'fk_usr_id_seller' => 'required|exists:user_usr,usr_id',
-        ], [
-            'pac_type.required'         => 'Le type d\'activité est obligatoire.',
-            'pac_type.in'               => 'Le type doit être : call, email, meeting, note ou task.',
-            'pac_subject.required'      => 'Le sujet est obligatoire.',
-            'pac_subject.max'           => 'Le sujet ne peut pas dépasser 255 caractères.',
-            'pac_date.required'         => 'La date de l\'activité est obligatoire.',
-            'pac_date.date'             => 'La date de l\'activité n\'est pas valide.',
-            'pac_due_date.date'         => 'La date d\'échéance n\'est pas valide.',
-            'pac_is_done.boolean'       => 'Le champ "fait" doit être vrai ou faux.',
-            'pac_duration.integer'      => 'La durée doit être un nombre entier.',
-            'pac_duration.min'          => 'La durée ne peut pas être négative.',
-            'fk_opp_id.exists'          => 'L\'opportunité sélectionnée n\'existe pas.',
-            'fk_ptr_id.required'        => 'Le partenaire est obligatoire.',
-            'fk_ptr_id.exists'          => 'Le partenaire sélectionné n\'existe pas.',
-            'fk_ctc_id.exists'          => 'Le contact sélectionné n\'existe pas.',
-            'fk_usr_id_seller.required' => 'Le vendeur est obligatoire.',
-            'fk_usr_id_seller.exists'   => 'Le vendeur sélectionné n\'existe pas.',
+            'pac_type'          => 'required|string|in:call,email,meeting,note,task',
+            'pac_subject'       => 'required|string|max:255',
+            'pac_description'   => 'nullable|string',
+            'pac_date'          => 'required|date',
+            'pac_due_date'      => 'nullable|date',
+            'pac_is_done'       => 'sometimes|boolean',
+            'pac_location'      => 'nullable|string|max:255',
+            'fk_opp_id'         => 'nullable|exists:prospect_opportunity_opp,opp_id',
+            'fk_ptr_id'         => 'required|exists:partner_ptr,ptr_id',
+            'fk_usr_id_seller'  => 'required|exists:user_usr,usr_id',
+            'ctc_ids'           => 'nullable|array',
+            'ctc_ids.*'         => 'integer|exists:contact_ctc,ctc_id',
         ]);
 
+        $ctcIds = $request->input('ctc_ids', []);
+        unset($validated['ctc_ids']);
+
         $activity = ProspectActivityModel::create($validated);
+
+        if (!empty($ctcIds)) {
+            $activity->contacts()->sync($ctcIds);
+        }
 
         return response()->json(['message' => 'Activité créée', 'data' => $activity], 201);
     }
@@ -182,11 +181,14 @@ class ApiProspectActivityController extends Controller
         $activity = ProspectActivityModel::with([
             'opportunity',
             'partner:ptr_id,ptr_name',
-            'contact: ctc_id,ctc_firstname,ctc_lastname',
-            'seller:usr_id,usr_firstname,usr_lastname'
-        ])
-            ->findOrFail($id);
-        return response()->json(['status' => true, 'data' => $activity]);
+            'contacts:ctc_id,ctc_firstname,ctc_lastname,ctc_email',
+            'seller:usr_id,usr_firstname,usr_lastname',
+        ])->findOrFail($id);
+
+        $result = $activity->toArray();
+        $result['ctc_ids'] = $activity->contacts->pluck('ctc_id')->toArray();
+
+        return response()->json(['status' => true, 'data' => $result]);
     }
 
     public function update(Request $request, $id)
@@ -194,38 +196,25 @@ class ApiProspectActivityController extends Controller
         $activity = ProspectActivityModel::findOrFail($id);
 
         $validated = $request->validate([
-            'pac_type' => 'sometimes|required|string|in:call,email,meeting,note,task',
-            'pac_subject' => 'sometimes|required|string|max:255',
-            'pac_description' => 'nullable|string',
-            'pac_date' => 'sometimes|required|date',
-            'pac_due_date' => 'nullable|date',
-            'pac_is_done' => 'sometimes|boolean',
-            'pac_done_date' => 'nullable|date',
-            'pac_duration' => 'nullable|integer|min:0',
-            'fk_opp_id' => 'nullable|exists:prospect_opportunity_opp,opp_id',
-            'fk_ptr_id' => 'sometimes|required|exists:partner_ptr,ptr_id',
-            'fk_ctc_id' => 'nullable|exists:contact_ctc,ctc_id',
+            'pac_type'         => 'sometimes|required|string|in:call,email,meeting,note,task',
+            'pac_subject'      => 'sometimes|required|string|max:255',
+            'pac_description'  => 'nullable|string',
+            'pac_date'         => 'sometimes|required|date',
+            'pac_due_date'     => 'nullable|date',
+            'pac_is_done'      => 'sometimes|boolean',
+            'pac_done_date'    => 'nullable|date',
+            'pac_location'     => 'nullable|string|max:255',
+            'fk_opp_id'        => 'nullable|exists:prospect_opportunity_opp,opp_id',
+            'fk_ptr_id'        => 'sometimes|required|exists:partner_ptr,ptr_id',
             'fk_usr_id_seller' => 'sometimes|required|exists:user_usr,usr_id',
-        ], [
-            'pac_type.required'         => 'Le type d\'activité est obligatoire.',
-            'pac_type.in'               => 'Le type doit être : call, email, meeting, note ou task.',
-            'pac_subject.required'      => 'Le sujet est obligatoire.',
-            'pac_subject.max'           => 'Le sujet ne peut pas dépasser 255 caractères.',
-            'pac_date.required'         => 'La date de l\'activité est obligatoire.',
-            'pac_date.date'             => 'La date de l\'activité n\'est pas valide.',
-            'pac_due_date.date'         => 'La date d\'échéance n\'est pas valide.',
-            'pac_done_date.date'        => 'La date de réalisation n\'est pas valide.',
-            'pac_is_done.boolean'       => 'Le champ "fait" doit être vrai ou faux.',
-            'pac_duration.integer'      => 'La durée doit être un nombre entier.',
-            'pac_duration.min'          => 'La durée ne peut pas être négative.',
-            'fk_opp_id.exists'          => 'L\'opportunité sélectionnée n\'existe pas.',
-            'fk_ptr_id.required'        => 'Le partenaire est obligatoire.',
-            'fk_ptr_id.exists'          => 'Le partenaire sélectionné n\'existe pas.',
-            'fk_ctc_id.exists'          => 'Le contact sélectionné n\'existe pas.',
-            'fk_usr_id_seller.required' => 'Le vendeur est obligatoire.',
-            'fk_usr_id_seller.exists'   => 'Le vendeur sélectionné n\'existe pas.',
+            'ctc_ids'          => 'nullable|array',
+            'ctc_ids.*'        => 'integer|exists:contact_ctc,ctc_id',
         ]);
 
+        if ($request->has('ctc_ids')) {
+            $activity->contacts()->sync($request->input('ctc_ids', []));
+        }
+        unset($validated['ctc_ids']);
 
         $activity->update($validated);
 
@@ -266,7 +255,6 @@ class ApiProspectActivityController extends Controller
                 'pac_date',
                 'pac_due_date',
                 'pac_is_done',
-                'pac_duration',
                 'fk_opp_id',
                 'opp_label',
                 DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
@@ -284,12 +272,119 @@ class ApiProspectActivityController extends Controller
     }
 
     /**
+     * Activités d'un contact
+     */
+    public function byContact($ctcId)
+    {
+        $activities = ProspectActivityModel::query()
+            ->join('prospect_activity_contact_pac as paco', 'prospect_activity_pac.pac_id', '=', 'paco.fk_pac_id')
+            ->where('paco.fk_ctc_id', (int) $ctcId)
+            ->select([
+                'prospect_activity_pac.pac_id',
+                'prospect_activity_pac.pac_type',
+                'prospect_activity_pac.pac_subject',
+                'prospect_activity_pac.pac_description',
+                'prospect_activity_pac.pac_date',
+                'prospect_activity_pac.pac_due_date',
+                'prospect_activity_pac.pac_is_done',
+                'prospect_activity_pac.pac_done_date',
+                'prospect_activity_pac.pac_location',
+                'prospect_activity_pac.fk_opp_id',
+                'prospect_activity_pac.fk_ptr_id',
+                'partner_ptr.ptr_name',
+                'prospect_opportunity_opp.opp_label',
+                DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
+                DB::raw("CONCAT(author.usr_firstname, ' ', author.usr_lastname) as author_name"),
+            ])
+            ->leftJoin('partner_ptr', 'prospect_activity_pac.fk_ptr_id', '=', 'partner_ptr.ptr_id')
+            ->leftJoin('prospect_opportunity_opp', 'prospect_activity_pac.fk_opp_id', '=', 'prospect_opportunity_opp.opp_id')
+            ->leftJoin('user_usr as seller', 'prospect_activity_pac.fk_usr_id_seller', '=', 'seller.usr_id')
+            ->leftJoin('user_usr as author', 'prospect_activity_pac.fk_usr_id_author', '=', 'author.usr_id')
+            ->orderBy('prospect_activity_pac.pac_date', 'desc')
+            ->get();
+
+        return response()->json(['data' => $activities]);
+    }
+
+    /**
+     * Activités pour la vue calendrier
+     */
+    public function calendar(Request $request)
+    {
+        $user = Auth::user();
+        $canViewAll  = $user->can('prospect-activities.view_all');
+        $canViewTeam = $user->can('prospect-activities.view_team');
+
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+        $sellerId = $request->input('seller_id');
+
+        $query = ProspectActivityModel::query()
+            ->select([
+                'prospect_activity_pac.pac_id as id',
+                'pac_type',
+                'pac_subject',
+                'pac_date',
+                'pac_due_date',
+                'pac_is_done',
+                'ptr_name',
+                'opp_label',
+                DB::raw("CONCAT(seller.usr_firstname, ' ', seller.usr_lastname) as seller_name"),
+            ])
+            ->leftJoin('partner_ptr', 'prospect_activity_pac.fk_ptr_id', '=', 'ptr_id')
+            ->leftJoin('prospect_opportunity_opp', 'prospect_activity_pac.fk_opp_id', '=', 'opp_id')
+            ->leftJoin('user_usr as seller', 'prospect_activity_pac.fk_usr_id_seller', '=', 'seller.usr_id');
+
+        if (!$canViewAll) {
+            if ($canViewTeam) {
+                $visibleIds = array_merge([$user->usr_id], $user->getVisibleSellerIds());
+                if ($sellerId && in_array((int) $sellerId, $visibleIds)) {
+                    $query->where('prospect_activity_pac.fk_usr_id_seller', (int) $sellerId);
+                } else {
+                    $query->whereIn('prospect_activity_pac.fk_usr_id_seller', $visibleIds);
+                }
+            } else {
+                $query->where('prospect_activity_pac.fk_usr_id_seller', $user->usr_id);
+            }
+        } elseif ($sellerId) {
+            $query->where('prospect_activity_pac.fk_usr_id_seller', (int) $sellerId);
+        }
+
+        if ($dateFrom && $dateTo) {
+            $query->where(function ($q) use ($dateFrom, $dateTo) {
+                // Activités dans le mois affiché
+                $q->where(function ($q2) use ($dateFrom, $dateTo) {
+                    $q2->whereRaw('DATE(COALESCE(pac_due_date, pac_date)) >= ?', [$dateFrom])
+                       ->whereRaw('DATE(COALESCE(pac_due_date, pac_date)) <= ?', [$dateTo]);
+                })
+                // Activités en retard (non terminées, date antérieure au mois)
+                ->orWhere(function ($q2) use ($dateFrom) {
+                    $q2->whereRaw('DATE(COALESCE(pac_due_date, pac_date)) < ?', [$dateFrom])
+                       ->where('pac_is_done', 0);
+                });
+            });
+        } else {
+            if ($dateFrom) {
+                $query->whereRaw('DATE(COALESCE(pac_due_date, pac_date)) >= ?', [$dateFrom]);
+            }
+            if ($dateTo) {
+                $query->whereRaw('DATE(COALESCE(pac_due_date, pac_date)) <= ?', [$dateTo]);
+            }
+        }
+
+        $activities = $query->orderByRaw('COALESCE(pac_due_date, pac_date) ASC')->get();
+
+        return response()->json(['data' => $activities]);
+    }
+
+    /**
      * Prochaines activités/tâches (pour le dashboard)
      */
     public function upcoming(Request $request)
     {
         $user = Auth::user();
-        $canViewAll = $user->can('prospect-activities.view_all');
+        $canViewAll  = $user->can('prospect-activities.view_all');
+        $canViewTeam = $user->can('prospect-activities.view_team');
 
         $query = ProspectActivityModel::query()
             ->select([
@@ -309,7 +404,12 @@ class ApiProspectActivityController extends Controller
             ->where('pac_is_done', 0);
 
         if (!$canViewAll) {
-            $query->where('prospect_activity_pac.fk_usr_id_seller', $user->usr_id);
+            if ($canViewTeam) {
+                $visibleIds = array_merge([$user->usr_id], $user->getVisibleSellerIds());
+                $query->whereIn('prospect_activity_pac.fk_usr_id_seller', $visibleIds);
+            } else {
+                $query->where('prospect_activity_pac.fk_usr_id_seller', $user->usr_id);
+            }
         }
 
         $limit = (int) $request->input('limit', 10);

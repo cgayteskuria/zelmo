@@ -175,3 +175,12 @@ a:hover { color: var(--primary-hover); }
   opacity: 0.5;
   background-color: #f0f0f0;
 }
+
+/* ── Ligne activité en retard ────────────────────────────── */
+
+.row-overdue td {
+  background-color: #fff1f0 !important;
+}
+.row-overdue:hover td {
+  background-color: #ffe7e5 !important;
+}

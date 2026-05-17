@@ -128,11 +128,12 @@ class ApiDurationController
         }
 
         $validatedData = $request->validate([
-            'dur_label' => 'required|string|max:255',
-            'dur_order' => 'nullable|integer',
-            'dur_value' => 'required|integer',
+            'dur_label'     => 'required|string|max:255',
+            'dur_order'     => 'nullable|integer',
+            'dur_value'     => 'required|integer',
             'dur_time_unit' => 'required|in:day,monthly,annually',
-            'dur_mode' => 'nullable|in:advance,arrears',
+            'dur_mode'      => 'nullable|in:advance,arrears',
+            'dur_is_active' => 'boolean',
         ]);
 
         $validatedData['dur_reference'] = self::TYPES[$type];
@@ -163,11 +164,12 @@ class ApiDurationController
             ->firstOrFail();
 
         $validatedData = $request->validate([
-            'dur_label' => 'required|string|max:255',
-            'dur_order' => 'nullable|integer',
-            'dur_value' => 'required|integer',
+            'dur_label'     => 'required|string|max:255',
+            'dur_order'     => 'nullable|integer',
+            'dur_value'     => 'required|integer',
             'dur_time_unit' => 'required|in:day,monthly,annually',
-            'dur_mode' => 'nullable|in:advance,arrears',
+            'dur_mode'      => 'nullable|in:advance,arrears',
+            'dur_is_active' => 'boolean',
         ]);
 
         $validatedData['fk_usr_id_updater'] = $request->user()->usr_id;
@@ -226,6 +228,7 @@ class ApiDurationController
 
         $data = DurationsModel::select('dur_id as id', 'dur_label as label')
             ->where('dur_reference', $durReference)
+            ->where('dur_is_active', true)
             ->orderBy('dur_order', 'asc')
             ->orderBy('dur_label', 'asc')
             ->get();

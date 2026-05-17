@@ -207,7 +207,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
     }, [lines]);
 
     // Check if calculated total differs from extracted total
-    const hasTotalMismatch = useMemo(() => {      
+    const hasTotalMismatch = useMemo(() => {
         if (!extractedData) return false;
         const diff = Math.abs(totals.totalTTC - (extractedData.ocr_data.total || 0));
         return diff > 0.01; // Tolérance de 1 centime (évite les erreurs d'arrondi flottant)
@@ -279,7 +279,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                 ptr_is_active: 1,
             });
 
-            if (response.success) {
+            if (response.status) {
                 const newPartnerId = response.data.ptr_id;
                 const newPartnerName = response.data.ptr_name;
 
@@ -313,9 +313,9 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
             }
 
             // Validate lines
-            const invalidLines = lines.filter((l) => !l.fk_tax_id || !l.inl_prtlib);
+            const invalidLines = lines.filter((l) => !l.fk_tax_id);
             if (invalidLines.length > 0) {
-                message.error("Veuillez compléter toutes les lignes (désignation et TVA requises)");
+                message.error("Veuillez compléter toutes les lignes (TVA requise)");
                 return;
             }
 
@@ -334,7 +334,6 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                 lines: lines.map((line) => ({
                     fk_prt_id: line.fk_prt_id,
                     fk_tax_id: line.fk_tax_id,
-                    inl_prtlib: line.inl_prtlib,
                     inl_prtdesc: line.inl_prtdesc,
                     inl_qty: line.inl_qty,
                     inl_priceunitht: line.inl_priceunitht,
@@ -380,13 +379,13 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
             width: 180,
             render: (value, record) => (
                 <ProductSelect
-                size="small"
+                    size="small"
                     loadInitially={true}
                     value={value}
                     onChange={(v) => handleLineChange(record.key, "fk_prt_id", v)}
                     filters={{ is_purchasable: 1 }}
-                    style={{ width: "100%" }}               
-                  
+                    style={{ width: "100%" }}
+
                 />
             ),
         },
@@ -396,7 +395,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
             width: 120,
             render: (value, record) => (
                 <Input
-                size="small"
+                    size="small"
                     value={value}
                     onChange={(e) => handleLineChange(record.key, "inl_prtlib", e.target.value)}
                     // size="small"
@@ -414,7 +413,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                     onChange={(v) => handleLineChange(record.key, "inl_qty", v)}
                     min={0}
                     style={{ width: "100%" }}
-                  size="small"
+                    size="small"
                 />
             ),
         },
@@ -429,7 +428,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                     min={0}
                     precision={2}
                     style={{ width: "100%" }}
-                  size="small"
+                    size="small"
                 />
             ),
         },
@@ -445,7 +444,7 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                     max={100}
                     precision={2}
                     style={{ width: "100%" }}
-                       size="small"
+                    size="small"
                     formatter={(val) => `${val}%`}
                     parser={(val) => val.replace('%', '')}
                 />
@@ -624,23 +623,22 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                                                     </span>
                                                 ) : undefined}
                                             >
-                                                <Space.Compact style={{ width: '100%' }}>
-                                                    {/* On met un Form.Item sans label ici pour la gestion de la valeur */}
+                                                <div style={{ display: 'flex', width: '100%' }}>
                                                     <Form.Item
                                                         name="fk_ptr_id"
-                                                        noStyle // Très important : enlève les marges et le style du Form.Item interne
+                                                        noStyle
                                                         rules={[{ required: true, message: "Fournisseur requis" }]}
-
+                                                        style={{ flex: 1, minWidth: 0 }}
                                                     >
                                                         <PartnerSelect
                                                             ref={partnerRef}
                                                             filters={{ is_supplier: 1, is_active: 1 }}
                                                             loadInitially={true}
                                                             style={{ width: '100%' }}
+                                                        
                                                         />
                                                     </Form.Item>
 
-                                                    {/* Le bouton s'affiche à côté seulement si le fournisseur n'est pas trouvé */}
                                                     {vendorNotMatched && extractedData?.vendor?.ptr_name && (
                                                         <Popconfirm
                                                             title="Créer un nouveau fournisseur"
@@ -653,12 +651,13 @@ export default function InvoiceOcrImportDrawer({ open, onClose, onSuccess }) {
                                                                 type="primary"
                                                                 icon={<UserAddOutlined />}
                                                                 loading={addingPartner}
+                                                                style={{  height: 36, marginLeft:10 }}
                                                             >
                                                                 Ajouter
                                                             </Button>
                                                         </Popconfirm>
                                                     )}
-                                                </Space.Compact>
+                                                </div>
                                             </Form.Item>
                                         </Col>
                                         <Col span={12}>

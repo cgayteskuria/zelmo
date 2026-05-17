@@ -18,8 +18,19 @@ class ContractModel extends BizDocumentModel
     const CREATED_AT = 'con_created';
     const UPDATED_AT = 'con_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['con_number', 'con_label'];
+    }
+
     // Protection de la clé primaire
     protected $guarded = ['con_id'];
+
+    protected $casts = [
+        'con_date'                   => 'date',
+        'con_sign_token_expires_at'  => 'datetime',
+        'con_sign_token_used_at'     => 'datetime',
+    ];
 
     /**
      * Statuts du contrat

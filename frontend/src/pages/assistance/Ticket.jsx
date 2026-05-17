@@ -1155,6 +1155,7 @@ function TicketView({ ticketId }) {
                                     <UserSelect
                                         value={ticket.fk_usr_id_assignedto}
                                         initialData={ticket.assigned_to}
+                                        filters={{ is_technician: 1 }}
                                         loadInitially={false}
                                         allowClear
                                         autoFocus

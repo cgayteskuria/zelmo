@@ -36,16 +36,19 @@ export default function ContactSelect({
         ? showAddButton
         : !!effectivePartnerId;
 
-    // Préparer l'option initiale
+    // Préparer l'option(s) initiale(s) — supporte un objet unique ou un tableau
     const initialOptions = useMemo(() => {
-        if (!initialData || !initialData.ctc_id) return [];
-
-        const computedLabel =
-            initialData.label ||
-            `${initialData.ctc_firstname || ""} ${initialData.ctc_lastname || ""}`.trim() ||
-            initialData.ctc_email;
-
-        return [{ value: initialData.ctc_id, label: computedLabel }];
+        if (!initialData) return [];
+        const items = Array.isArray(initialData) ? initialData : [initialData];
+        return items
+            .filter(item => item?.ctc_id)
+            .map(item => ({
+                value: item.ctc_id,
+                label: item.label ||
+                    `${item.ctc_firstname || ""} ${item.ctc_lastname || ""}`.trim() ||
+                    item.ctc_email ||
+                    String(item.ctc_id),
+            }));
     }, [initialData]);
 
     const mapOption = useCallback((item) => ({

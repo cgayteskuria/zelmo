@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Tag, Spin, Modal, Typography, Badge } from "antd";
+import { Button, Card, Tag, Spin, Modal, Typography, Badge, Space } from "antd";
 import { message } from '../../utils/antdStatic';
-import { PlusOutlined, UnorderedListOutlined, CalendarOutlined, UserOutlined } from "@ant-design/icons";
+import { PlusOutlined, AppstoreOutlined, UnorderedListOutlined, CalendarOutlined, UserOutlined } from "@ant-design/icons";
 import { DndContext, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors, useDroppable, useDraggable, } from "@dnd-kit/core";
 import PageContainer from "../../components/common/PageContainer";
 import LostReasonSelect from "../../components/select/LostReasonSelect";
@@ -287,10 +287,21 @@ export default function OpportunityPipeline() {
         <PageContainer
             title="Pipeline des opportunités"
             actions={
-                <div style={{ display: "flex", gap: 8 }}>
-                    <Button icon={<UnorderedListOutlined />} onClick={() => navigate("/opportunities")} size="large">
-                        Liste
-                    </Button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <Space.Compact>
+                        <Button
+                            icon={<UnorderedListOutlined />}
+                            onClick={() => navigate("/opportunities")}
+                        >
+                            Liste
+                        </Button>
+                        <Button
+                            icon={<AppstoreOutlined />}
+                            type="primary"
+                        >
+                            Pipeline
+                        </Button>
+                    </Space.Compact>
                     <Button type="primary" icon={<PlusOutlined />} onClick={openForCreate} size="large">
                         Nouvelle opportunité
                     </Button>

@@ -352,7 +352,10 @@ export default function useServerTable({
         size: "small",
         ...(onRowClick ? {
             onRow: (record) => ({
-                onClick: () => onRowClick(record),
+                onClick: (e) => {
+                    if (e.target.closest('[data-no-row-click]')) return;
+                    onRowClick(record);
+                },
                 style: { cursor: 'pointer' },
             }),
         } : {}),

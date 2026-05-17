@@ -23,8 +23,13 @@ class DurationsModel extends BaseModel
         'dur_value',
         'dur_time_unit',
         'dur_mode',
+        'dur_is_active',
         'fk_usr_id_author',
         'fk_usr_id_updater'
+    ];
+
+    protected $casts = [
+        'dur_is_active' => 'boolean',
     ];
 
     // Constantes pour les types de durées
@@ -66,6 +71,11 @@ class DurationsModel extends BaseModel
     public function scopeOfType($query, $type)
     {
         return $query->where('dur_reference', $type);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('dur_is_active', true);
     }
 
     /**

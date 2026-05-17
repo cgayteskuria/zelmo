@@ -239,7 +239,7 @@ export default function Warehouse({ warehouseId, open, onClose, onSubmit, drawer
             onClose={handleClose}
             open={open}
             size={drawerSize}
-            destroyOnClose
+            destroyOnHidden
             forceRender
         >
             <Spin spinning={loading} tip="Chargement...">

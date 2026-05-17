@@ -89,7 +89,7 @@ export default function EInvoicingInbox() {
             message.success("Facture importée avec succès. Une facture fournisseur brouillon a été créée.");
             load();
         } catch (err) {
-            message.error(err?.response?.data?.message ?? "Erreur lors de l'import.");
+            message.error(err?.message ?? "Erreur lors de l'import.");
         } finally {
             setActionLoading(null);
         }

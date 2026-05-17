@@ -13,6 +13,11 @@ class PartnerModel extends BaseModel
     public $incrementing = true;
     protected $keyType = 'int';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['ptr_name', 'ptr_email'];
+    }
+
     const CREATED_AT = 'insert_at';
     const UPDATED_AT = 'updated_at';
 
@@ -26,12 +31,16 @@ class PartnerModel extends BaseModel
      * Champs castés
      */
     protected $casts = [
-        'ptr_is_active'   => 'boolean',
-        'ptr_is_customer' => 'boolean',
-        'ptr_is_supplier' => 'boolean',
-        'ptr_is_prospect' => 'boolean',
-        'insert_at'       => 'datetime',
-        'updated_at'      => 'datetime',
+        'ptr_is_active'                  => 'boolean',
+        'ptr_is_customer'                => 'boolean',
+        'ptr_is_supplier'                => 'boolean',
+        'ptr_is_prospect'                => 'boolean',
+        'ptr_is_prospect_archived'       => 'boolean',
+        'insert_at'                    => 'datetime',
+        'updated_at'                   => 'datetime',
+        'ptr_mandate_token_expires_at' => 'datetime',
+        'ptr_mandate_sent_at'          => 'datetime',
+        'ptr_mandate_completed_at'     => 'datetime',
     ];
 
     /**

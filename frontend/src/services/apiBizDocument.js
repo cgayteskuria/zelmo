@@ -60,6 +60,10 @@ export const saleOrdersGenericApi = {
     api.post(`/sale-orders/${orderId}/generate-invoice`, {
       lines: linesWithQty,
     }),
+
+  // Livrer / réaliser / activer des lignes de commande
+  deliverLines: (orderId, lines) =>
+    api.post(`/sale-orders/${orderId}/deliver-lines`, { lines }),
 };
 
 /**
@@ -305,11 +309,15 @@ export const contractsGenericApi = {
     terminatedDate,
     terminatedInvoiceDate,
     terminatedReason,
+    invoiceRemaining = false,
+    terminationType = 'immediate',
   ) =>
     api.post(`/contracts/${contractId}/terminate`, {
       terminated_date: terminatedDate,
       terminated_invoice_date: terminatedInvoiceDate,
       terminated_reason: terminatedReason,
+      invoice_remaining: invoiceRemaining,
+      termination_type: terminationType,
     }),
 
   // Récupérer les contrats éligibles à la facturation

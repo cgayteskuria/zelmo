@@ -3,6 +3,7 @@
 namespace App\Services\Pdf;
 
 use App\Models\SaleOrderModel;
+use App\Models\ContractModel;
 use App\Models\InvoiceModel;
 use App\Models\DeliveryNoteModel;
 use App\Models\DeliveryNoteLineModel;
@@ -95,6 +96,9 @@ class DocumentPdfService
             'paymentMode',
             'paymentCondition',
             'commitmentDuration',
+            'renewDuration',
+            'noticeDuration',
+            'invoicingDuration',
             'taxPosition',
             'lines.product',
             'lines.tax',
@@ -120,8 +124,13 @@ class DocumentPdfService
         $companyData = $this->getCompanyAndConfig();
 
         // Déterminer le type et le label du document
+        // Avant signature (status 0=Brouillon, 1=En attente) : "Offre commerciale"
+        // Après signature (status 3+ ou ord_sign_token_used_at renseigné) : "Bon de commande"
         $documentType = $saleOrder->ord_status <= 2 ? 'salequotation' : 'saleorder';
-        $documentTypeLabel = $saleOrder->ord_status <= 2 ? 'Devis' : 'Commande';
+        $isSigned = !empty($saleOrder->ord_sign_token_used_at);
+        $documentTypeLabel = $saleOrder->ord_status <= 2
+            ? 'Offre commerciale'
+            : ($isSigned ? 'Bon de commande' : 'Commande');
 
         // Informations du partenaire
         $partner = $saleOrder->partner;
@@ -147,14 +156,18 @@ class DocumentPdfService
                     "payment_mode" => $saleOrder->paymentMode ? $saleOrder->paymentMode->pmc_label : '',
                     "payment_condition" => $saleOrder->paymentCondition ? $saleOrder->paymentCondition->dur_label : '',
                     "ref" => $saleOrder->ord_ref ?? '',
-                    "commitment" => $saleOrder->commitmentDuration ? $saleOrder->commitmentDuration->dur_label : '',
+                    "commitment"  => $saleOrder->commitmentDuration  ? $saleOrder->commitmentDuration->dur_label  : '',
+                    "renew"       => $saleOrder->renewDuration        ? $saleOrder->renewDuration->dur_label       : '',
+                    "notice"      => $saleOrder->noticeDuration       ? $saleOrder->noticeDuration->dur_label      : '',
+                    "invoicing"   => $saleOrder->invoicingDuration    ? $saleOrder->invoicingDuration->dur_label   : '',
+                    "has_subscription" => $saleOrder->lines->contains(fn($l) => $l->orl_is_subscription && $l->orl_type === 0),
                     "totalht" => (float)$saleOrder->ord_totalht,
                     "totalhtsub" => (float)$saleOrder->ord_totalhtsub,
                     "totalhtcomm" => (float)$saleOrder->ord_totalhtcomm,
                     "totaltax" => (float)$saleOrder->ord_totaltax,
                     "totalttc" => (float)$saleOrder->ord_totalttc,
-                    "amount_remaining" => 0, // À adapter si besoin
-                    "validation_data" => null, // À adapter si besoin
+                    "amount_remaining" => 0,
+                    "validation_data" => $saleOrder->ord_validation_data ?? null,
                 ],
                 "lines" => $this->formatSaleOrderLines($saleOrder->lines()->with('tax')->get()),
                 "payment" => [], // Historique des paiements si nécessaire
@@ -261,17 +274,142 @@ class DocumentPdfService
     private function generatePdf($documentData)
     {
         try {
-            // Créer l'instance du PDF
             $pdf = new BusinessDocumentPDF($documentData);
-
-            // Générer le PDF en string
             $pdfContent = $pdf->Output('document.pdf', 'S');
-
-            // Encoder en base64
             return base64_encode($pdfContent);
         } catch (\Exception $e) {
             throw new \Exception("Erreur lors de la génération du PDF : " . $e->getMessage());
         }
+    }
+
+    /**
+     * Génère le PDF binaire brut d'un devis/commande (pour signature numérique).
+     */
+    public function generateSaleOrderPdfRaw(int $orderId): string
+    {
+        $saleOrder = SaleOrderModel::with([
+            'partner', 'contact', 'seller', 'paymentMode',
+            'paymentCondition', 'commitmentDuration',
+            'renewDuration', 'noticeDuration', 'invoicingDuration',
+            'taxPosition', 'lines.product', 'lines.tax', 'author',
+        ])->findOrFail($orderId);
+
+        $documentData = $this->prepareSaleOrderData($saleOrder);
+
+        try {
+            $pdf = new BusinessDocumentPDF($documentData);
+            return $pdf->Output('document.pdf', 'S');
+        } catch (\Exception $e) {
+            throw new \Exception("Erreur génération PDF : " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Génère un PDF base64 pour un contrat.
+     */
+    public function generateContractPdf(int $contractId): string
+    {
+        return base64_encode($this->generateContractPdfRaw($contractId));
+    }
+
+    /**
+     * Génère le PDF binaire brut d'un contrat (pour signature numérique).
+     */
+    public function generateContractPdfRaw(int $contractId): string
+    {
+        $contract = ContractModel::with([
+            'partner', 'contact', 'seller', 'paymentMode',
+            'paymentConditionDuration', 'commitmentDuration', 'taxPosition',
+            'lines.tax', 'author',
+        ])->findOrFail($contractId);
+
+        $documentData = $this->prepareContractData($contract);
+
+        try {
+            $pdf = new BusinessDocumentPDF($documentData);
+            return $pdf->Output('document.pdf', 'S');
+        } catch (\Exception $e) {
+            throw new \Exception("Erreur génération PDF contrat : " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Prépare les données d'un contrat pour la génération PDF.
+     */
+    private function prepareContractData(ContractModel $contract): array
+    {
+        $companyData = $this->getCompanyAndConfig();
+
+        $isCustomer       = $contract->con_operation === ContractModel::OPERATION_CUSTOMER_CONTRACT;
+        $documentType     = $isCustomer ? 'custcontract' : 'suppliercontract';
+        $documentTypeLabel = $isCustomer ? 'Contrat client' : 'Contrat fournisseur';
+
+        $partner = $contract->partner;
+        $creator = Auth::user()
+            ? Auth::user()->usr_firstname . ' ' . Auth::user()->usr_lastname
+            : 'System';
+
+        $validationData = $contract->con_validation_data ?? null;
+
+        return [
+            "document" => [
+                "type"      => $documentType,
+                "typeLabel" => $documentTypeLabel,
+                "creator"   => $creator,
+                "header"    => [
+                    "number"           => $contract->con_number,
+                    "date"             => $contract->con_date
+                        ? (is_string($contract->con_date) ? $contract->con_date : $contract->con_date->format('Y-m-d'))
+                        : date('Y-m-d'),
+                    "valid"            => null,
+                    "ptr_name"         => $partner ? $partner->ptr_name : '',
+                    "ptr_address"      => $partner ? $partner->ptr_address : '',
+                    "ptr_zip"          => $partner ? $partner->ptr_zip : '',
+                    "ptr_city"         => $partner ? $partner->ptr_city : '',
+                    "ptr_fulladdress"  => $this->formatPartnerAddress($partner),
+                    "payment_mode"     => $contract->paymentMode ? $contract->paymentMode->pmc_label : '',
+                    "payment_condition" => $contract->paymentConditionDuration ? $contract->paymentConditionDuration->dur_label : '',
+                    "ref"              => $contract->con_ref ?? '',
+                    "commitment"       => $contract->commitmentDuration ? $contract->commitmentDuration->dur_label : '',
+                    "totalht"          => (float) $contract->con_totalht,
+                    "totalhtsub"       => (float) $contract->con_totalhtsub,
+                    "totalhtcomm"      => (float) $contract->con_totalhtcomm,
+                    "totaltax"         => (float) $contract->con_totaltax,
+                    "totalttc"         => (float) $contract->con_totalttc,
+                    "amount_remaining" => 0,
+                    "validation_data"  => $validationData,
+                ],
+                "lines"   => $this->formatContractLines($contract->lines()->with('tax')->get()),
+                "payment" => [],
+            ],
+            "company" => $this->formatCompanyData($companyData['company'], $companyData['bank']),
+            "sale"    => [
+                "conf" => [
+                    "sco_sale_legal_notice" => $companyData['saleConfig']->sco_sale_legal_notice ?? '',
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Formate les lignes de contrat pour le PDF.
+     */
+    private function formatContractLines($lines): array
+    {
+        $formatted = [];
+        foreach ($lines as $line) {
+            $formatted[] = [
+                "type"         => $line->col_type ?? 0,
+                "prtlib"       => $line->col_prtlib ?? '',
+                "prtdesc"      => $line->col_prtdesc ?? '',
+                "qty"          => $line->col_qty ?? 0,
+                "priceunitht"  => (float) ($line->col_priceunitht ?? 0),
+                "discount"     => (float) ($line->col_discount ?? 0),
+                "tax"          => (float) ($line->col_tax_rate ?? 0),
+                "mtht"         => (float) ($line->col_mtht ?? 0),
+            ];
+        }
+        return $formatted;
     }
 
     /**

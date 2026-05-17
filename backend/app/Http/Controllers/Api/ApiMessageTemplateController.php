@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\MessageTemplateModel;
 use App\Models\SaleConfigModel;
 use App\Models\InvoiceConfigModel;
+use App\Models\ContractConfigModel;
 use App\Models\SaleOrderModel;
 use App\Models\InvoiceModel;
 use App\Models\CompanyModel;
@@ -195,7 +196,7 @@ class ApiMessageTemplateController extends Controller
     public function parse(Request $request): JsonResponse
     {
         $validatedData = $request->validate([
-            'context' => 'required|in:sale,invoice',
+            'context' => 'required|in:sale,invoice,contract',
             'template_type' => 'required|string',
             'document_id' => 'nullable|integer',
             'data' => 'nullable|array',
@@ -218,10 +219,14 @@ class ApiMessageTemplateController extends Controller
         } elseif ($context === 'invoice') {
             $config = InvoiceConfigModel::first();
             if ($config) {
-                if ($config) {
-                    $fieldName = 'fk_emt_id_' . $templateType;
-                    $templateId = $config->{$fieldName} ?? null;
-                }
+                $fieldName = 'fk_emt_id_' . $templateType;
+                $templateId = $config->{$fieldName} ?? null;
+            }
+        } elseif ($context === 'contract') {
+            $config = ContractConfigModel::first();
+            if ($config) {
+                $fieldName = 'fk_emt_id_' . $templateType;
+                $templateId = $config->{$fieldName} ?? null;
             }
         }
 

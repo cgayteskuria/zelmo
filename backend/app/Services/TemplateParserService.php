@@ -7,6 +7,7 @@ use App\Models\CompanyModel;
 use App\Models\TicketModel;
 use App\Models\SaleOrderModel;
 use App\Models\InvoiceModel;
+use App\Models\ContractModel;
 
 
 class TemplateParserService
@@ -133,6 +134,10 @@ class TemplateParserService
                     'total_ttc' => number_format($document->ord_totalttc ?? 0, 2, ',', ' '),
                     'note'      => $document->ord_note ?? '',
                     'ref'       => $document->ord_ref  ?? '',
+                    'signed_at' => $document->ord_sign_token_used_at
+                        ? $document->ord_sign_token_used_at->format('d/m/Y à H:i')
+                        : '',
+                    'url'       => config('app.frontend_url') . '/sales/sale-orders/' . $document->ord_id,
                 ];
                 if ($document->partner) {
                     $p = $document->partner;
@@ -153,6 +158,19 @@ class TemplateParserService
                         'email'     => $c->ctc_email     ?? '', 'phone'     => $c->ctc_phone     ?? '',
                         'mobile'    => $c->ctc_mobile    ?? '', 'jobtitle'  => $c->ctc_job_title ?? '',
                         'fullname'  => trim(($c->ctc_firstname ?? '') . ' ' . ($c->ctc_lastname ?? '')),
+                    ];
+                } elseif ($document->ord_validation_data) {
+                    // Fallback : données du signataire quand aucun contact n'est lié au devis
+                    $vd = json_decode($document->ord_validation_data, true) ?? [];
+                    $data['contact'] = [
+                        'id'        => 0,
+                        'firstname' => '',
+                        'lastname'  => '',
+                        'fullname'  => $vd['name']         ?? ($document->ord_sign_signer_email ?? ''),
+                        'email'     => $vd['signer_email'] ?? ($document->ord_sign_signer_email ?? ''),
+                        'phone'     => '',
+                        'mobile'    => '',
+                        'jobtitle'  => '',
                     ];
                 }
                 if ($document->seller) {
@@ -234,6 +252,49 @@ class TemplateParserService
                     ])->toArray();
                 }
             }
+
+        } elseif ($context === 'contract') {
+            $document = ContractModel::with(['partner', 'contact', 'seller'])->find($documentId);
+            if ($document) {
+                $data['contract'] = [
+                    'id'        => $document->con_id,
+                    'number'    => $document->con_number ?? '',
+                    'label'     => $document->con_label  ?? '',
+                    'date'      => $document->con_date   ? $document->con_date->format('d/m/Y') : '',
+                    'total_ht'  => number_format($document->con_totalht  ?? 0, 2, ',', ' '),
+                    'total_ttc' => number_format($document->con_totalttc ?? 0, 2, ',', ' '),
+                    'note'      => $document->con_note   ?? '',
+                ];
+                if ($document->partner) {
+                    $p = $document->partner;
+                    $data['partner'] = [
+                        'id'      => $p->ptr_id,      'name'    => $p->ptr_name    ?? '',
+                        'email'   => $p->ptr_email    ?? '',  'phone'   => $p->ptr_phone   ?? '',
+                        'mobile'  => $p->ptr_mobile   ?? '',  'address' => $p->ptr_address ?? '',
+                        'zip'     => $p->ptr_zip      ?? '',  'city'    => $p->ptr_city    ?? '',
+                        'country' => $p->ptr_country  ?? '',
+                    ];
+                }
+                if ($document->contact) {
+                    $c = $document->contact;
+                    $data['contact'] = [
+                        'id'        => $c->ctc_id,
+                        'firstname' => $c->ctc_firstname ?? '', 'lastname'  => $c->ctc_lastname  ?? '',
+                        'email'     => $c->ctc_email     ?? '', 'phone'     => $c->ctc_phone     ?? '',
+                        'mobile'    => $c->ctc_mobile    ?? '', 'jobtitle'  => $c->ctc_job_title ?? '',
+                        'fullname'  => trim(($c->ctc_firstname ?? '') . ' ' . ($c->ctc_lastname ?? '')),
+                    ];
+                }
+                if ($document->seller) {
+                    $s = $document->seller;
+                    $data['seller'] = [
+                        'id'        => $s->usr_id,        'firstname' => $s->usr_firstname ?? '',
+                        'lastname'  => $s->usr_lastname  ?? '', 'email'     => $s->usr_email    ?? '',
+                        'phone'     => $s->usr_phone     ?? '',
+                        'fullname'  => trim(($s->usr_firstname ?? '') . ' ' . ($s->usr_lastname ?? '')),
+                    ];
+                }
+            }
         }
 
         return $data;
@@ -262,7 +323,7 @@ class TemplateParserService
             // Parcourir les clés pour accéder à la valeur imbriquée
             $value = $data;
             foreach ($keys as $key) {
-                if (is_array($value) && isset($value[$key])) {
+                if (is_array($value) && array_key_exists($key, $value)) {
                     $value = $value[$key];
                 } else {
                     // Si la clé n'existe pas, retourner la variable non remplacée
@@ -270,7 +331,7 @@ class TemplateParserService
                 }
             }
 
-            // Si la valeur finale n'est pas un tableau, la retourner
+            // Si la valeur finale n'est pas un tableau, la retourner (null → chaîne vide)
             if (!is_array($value)) {
                 return $value ?? '';
             }

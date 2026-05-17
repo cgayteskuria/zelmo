@@ -15,6 +15,7 @@ import { createDateValidator } from '../../utils/writingPeriod';
 
 // Import lazy des composants lourds
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 const PaymentsTab = lazy(() => import('../../components/bizdocument/PaymentsTab'));
 
 // Composant de chargement pour les onglets
@@ -461,6 +462,16 @@ export default function Charge() {
                             uploadDocumentsApi={chargesGenericApi.uploadDocuments}
                             onCountChange={setDocumentsCount}
                         />
+                    </Suspense>
+                )
+            });
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="charge" entityId={chargeId} />
                     </Suspense>
                 )
             });

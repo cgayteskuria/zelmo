@@ -118,7 +118,10 @@ class ApiUserController extends Controller
             'fk_usr_id_manager',
             'vehicles_count', // Important !
             'manager',
-            'account'
+            'account',
+            'usr_enrichment_credits_limit',
+            'usr_enrichment_credits_used',
+            'usr_enrichment_credits_reset_at',
         ]);
 
         return response()->json([
@@ -169,7 +172,19 @@ class ApiUserController extends Controller
             $query->where('usr_is_active', true);
         }
 
+        if ($request->boolean('is_technician') || $request->boolean('usr_is_technician')) {
+            $query->where('usr_is_technician', true);
+        }
 
+        if ($request->boolean('is_managed_seller')) {
+            $currentUser = Auth::user();
+            $sellerIds = $currentUser->getVisibleSellerIds();
+            if (!empty($sellerIds)) {
+                $query->whereIn('usr_id', $sellerIds);
+            } else {
+                $query->whereRaw('0 = 1');
+            }
+        }
 
         $data = $query->select(
             'usr_id as id',
@@ -279,8 +294,9 @@ class ApiUserController extends Controller
             'usr_is_seller' => 'nullable|boolean',
             'usr_is_technician' => 'nullable|boolean',
             'usr_is_employee' => 'nullable|boolean',
-            'fk_acc_id_employe' => 'required_if:usr_is_employee,true|nullable|exists:account_account_acc,acc_id',
-            'fk_usr_id_manager' => 'nullable|exists:user_usr,usr_id',
+            'fk_acc_id_employe'            => 'required_if:usr_is_employee,true|nullable|exists:account_account_acc,acc_id',
+            'fk_usr_id_manager'            => 'nullable|exists:user_usr,usr_id',
+            'usr_enrichment_credits_limit' => 'nullable|integer|min:0',
         ]);
 
         // Empecher la desactivation du statut salarie si l'utilisateur a des vehicules
@@ -308,6 +324,9 @@ class ApiUserController extends Controller
             $user->usr_is_employee = $validatedData['usr_is_employee'] ?? $user->usr_is_employee;
             $user->fk_acc_id_employe = $validatedData['fk_acc_id_employe'] ?? null;
             $user->fk_usr_id_manager = $validatedData['fk_usr_id_manager'] ?? null;
+            if (array_key_exists('usr_enrichment_credits_limit', $validatedData)) {
+                $user->usr_enrichment_credits_limit = $validatedData['usr_enrichment_credits_limit'];
+            }
             // Mettre à jour le mot de passe si fourni
             if (!empty($validatedData['usr_password'])) {
                 $user->usr_password = Hash::make($validatedData['usr_password']);
@@ -346,5 +365,38 @@ class ApiUserController extends Controller
         return response()->json([
             'message' => 'Utilisateur supprimé avec succès',
         ]);
+    }
+
+    /**
+     * Liste des commerciaux supervisés par un manager
+     */
+    public function getManagedSellers(int $id): JsonResponse
+    {
+        $user = UserModel::findOrFail($id);
+
+        $sellers = $user->managedSellers()
+            ->select('usr_id as id', DB::raw("TRIM(CONCAT_WS(' ', usr_firstname, usr_lastname)) as label"))
+            ->orderBy('usr_lastname')
+            ->get();
+
+        return response()->json(['data' => $sellers]);
+    }
+
+    /**
+     * Remplace la liste des commerciaux supervisés par un manager
+     */
+    public function syncManagedSellers(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'seller_ids'   => 'nullable|array',
+            'seller_ids.*' => 'integer|exists:user_usr,usr_id',
+        ]);
+
+        $user = UserModel::findOrFail($id);
+        $sellerIds = $request->input('seller_ids', []);
+
+        $user->managedSellers()->sync($sellerIds);
+
+        return response()->json(['message' => 'Commerciaux supervisés mis à jour']);
     }
 }

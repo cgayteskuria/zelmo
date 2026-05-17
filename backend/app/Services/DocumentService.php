@@ -396,7 +396,7 @@ class DocumentService
         string $mimeType,
         string $module,
         int $recordId,
-        int $userId,
+        ?int $userId,
         bool $useSecureFilename = true
     ): DocumentModel {
         $foreignKey = $this->getForeignKeyColumn($module);

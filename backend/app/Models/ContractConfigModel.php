@@ -31,10 +31,20 @@ class ContractConfigModel extends BaseModel
     }
 
     /**
-     * Relation métier
+     * Relations métier
      */
-    public function contractTemplate()
+    public function contractTemplate(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(MessageTemplateModel::class, 'fk_emt_id', 'emt_id');
+    }
+
+    public function signRequestTemplate(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(MessageTemplateModel::class, 'fk_emt_id_sign_request', 'emt_id');
+    }
+
+    public function emailAccount(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(\App\Models\MessageEmailAccountModel::class, 'fk_eml_id', 'eml_id');
     }
 }

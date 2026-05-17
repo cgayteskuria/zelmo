@@ -88,6 +88,11 @@ export const purchaseOrderConfApi = {
  */
 export const saleOrderConfApi = {
   ...createCrudApi(api, "sale-order-conf", false),
+
+  uploadCgv: (id, formData) =>
+    api.post(`/sale-order-conf/${id}/upload-cgv`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
 };
 
 /**

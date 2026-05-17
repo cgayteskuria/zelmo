@@ -17,35 +17,21 @@ import { getUser } from "../../services/auth";
 
 const FilesTab = lazy(() => import("../../components/bizdocument/FilesTab"));
 
-export default function Opportunity({ opportunityId, open, onClose, onSubmit, defaultValues = {}, }) {
+export default function Opportunity({ opportunityId, open, onClose, onSubmit, defaultValues = {}, zIndex }) {
     const [form] = Form.useForm();
     const [lostModalOpen, setLostModalOpen] = useState(false);
     const [lostReasonId, setLostReasonId] = useState(null);
 
     const partnerId = Form.useWatch("fk_ptr_id", form);
-    const [defaultSeller, setDefaultSeller] = useState(() => {
-        if (!opportunityId) {
-            const currentUser = getUser();
-            if (currentUser?.id) {
-                return {
-                    usr_id: currentUser.id,
-                    usr_firstname: currentUser.firstname,
-                    usr_lastname: currentUser.lastname,
-                };
-            }
+    const [partnerInitialData, setPartnerInitialData] = useState(null);
+
+    const [defaultSeller] = useState(() => {
+        const currentUser = getUser();
+        if (currentUser?.id) {
+            return { usr_id: currentUser.id, usr_firstname: currentUser.firstname, usr_lastname: currentUser.lastname };
         }
         return null;
     });
-    // Auto-remplir le commercial avec l'utilisateur connecté lors de la création
-    useEffect(() => {
-        if (!opportunityId) {
-            const currentUser = getUser();
-            if (currentUser?.id) {
-                form.setFieldValue('fk_usr_id_seller', currentUser.id);
-
-            }
-        }
-    }, [opportunityId, form]);
 
     const { submit, remove, loading, entity, reload } = useEntityForm({
         api: opportunitiesApi,
@@ -121,11 +107,17 @@ export default function Opportunity({ opportunityId, open, onClose, onSubmit, de
         onClose?.();
     };
 
-    // Appliquer defaultValues à l'ouverture en mode création
+    // Appliquer defaultValues + valeurs par défaut à l'ouverture en mode création
     const handleAfterOpenChange = (isOpen) => {
-        if (isOpen && !opportunityId && defaultValues && Object.keys(defaultValues).length > 0) {
-            form.setFieldsValue(defaultValues);
+        if (isOpen && !opportunityId) {
+            const { partnerInitialData: pid, ...rest } = defaultValues ?? {};
+            const currentUser = getUser();
+            const init = { ...rest };
+            if (currentUser?.id) init.fk_usr_id_seller = currentUser.id;
+            if (Object.keys(init).length > 0) form.setFieldsValue(init);
+            setPartnerInitialData(pid ?? null);
         }
+        if (!isOpen) setPartnerInitialData(null);
     };
 
     const isWon = Boolean(entity?.stage?.pps_is_won);
@@ -164,7 +156,7 @@ export default function Opportunity({ opportunityId, open, onClose, onSubmit, de
                             {/* Qui */}
                             <Col span={12}>
                                 <Form.Item name="fk_ptr_id" label="Prospect" rules={[{ required: true, message: "Le prospect est requis" }]}>
-                                    <PartnerSelect initialData={entity?.partner} filters={{ is_prospect: 1 }} />
+                                    <PartnerSelect initialData={entity?.partner ?? partnerInitialData} filters={{ is_prospect: 1 }} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
@@ -187,7 +179,14 @@ export default function Opportunity({ opportunityId, open, onClose, onSubmit, de
                             {/* Pipeline */}
                             <Col span={6}>
                                 <Form.Item name="fk_pps_id" label="Étape" rules={[{ required: true, message: "L'étape est requise" }]}>
-                                    <PipelineStageSelect initialData={entity?.stage} />
+                                    <PipelineStageSelect
+                                        initialData={entity?.stage}
+                                        loadInitially={!opportunityId}
+                                        selectDefault={!opportunityId}
+                                        onDefaultSelected={(id) => {
+                                            if (!form.getFieldValue('fk_pps_id')) form.setFieldValue('fk_pps_id', id);
+                                        }}
+                                    />
                                 </Form.Item>
                             </Col>
                             <Col span={6}>
@@ -342,6 +341,7 @@ export default function Opportunity({ opportunityId, open, onClose, onSubmit, de
                 destroyOnHidden
                 forceRender
                 afterOpenChange={handleAfterOpenChange}
+                zIndex={zIndex}
             >
                 <Spin spinning={loading} tip="Chargement...">
                     <Form form={form} layout="vertical" onFinish={handleFormSubmit}>

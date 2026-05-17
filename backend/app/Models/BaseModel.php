@@ -7,10 +7,12 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use App\Traits\HasAuthorUpdater;
+use App\Traits\LogsActivity;
 
 abstract class BaseModel extends Model
 {
     use HasAuthorUpdater;
+    use LogsActivity;
     /**
      * Retourne dynamiquement les colonnes modifiables pour assignation de masse.
      * Exclut la clé primaire et les timestamps définis dans le modèle.

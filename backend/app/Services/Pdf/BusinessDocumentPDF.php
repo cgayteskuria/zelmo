@@ -15,13 +15,15 @@ class BusinessDocumentPDF extends TCPDF
     private $colsW;
 
     private $bottomHeader;
+    private $headerPageLineY = [];
     private $topYFrameFirstPage = 75;
     private $topYFrameOtherPage = 30;
 
     private $lineColor;
     private $bottomTotalY;
+    private $bankInfoEndY;
 
-    const BOTTOM_FRAMES_LAST_PAGE = 233;
+    const BOTTOM_FRAMES_LAST_PAGE = 218;
     const BOTTOM_FRAMES_OTHERS_PAGES = 275;
 
     const HEADER_TABLE_H = 8;
@@ -98,15 +100,38 @@ class BusinessDocumentPDF extends TCPDF
             // Éléments financiers uniquement pour certains types de documents
             if (!in_array($this->documentData["document"]["type"], ['custdeliverynote', 'supplierdeliverynote'])) {
                 $this->addPaymentInfo();
+                $this->addSubscriptionClause();
                 $this->addTotals();
                 $this->addPaymentHistory();
                 $this->addSignature();
+            } else {
+                $this->addSubscriptionClause();
             }
+
+            $this->addPageNumbers();
 
             return $this;
         } catch (\Exception $e) {
             throw new \Exception("Erreur lors de la génération du PDF : " . $e->getMessage());
         }
+    }
+
+    /**
+     * Écrit le nombre total de pages dans l'en-tête de chaque page.
+     * L'alias TCPDF ne fonctionne pas avec les polices TrueTypeUnicode (UTF-16BE),
+     * on revient donc sur chaque page après génération complète.
+     */
+    private function addPageNumbers(): void
+    {
+        $totalPages = $this->getNumPages();
+        $currentPage = $this->getPage();
+        for ($i = 1; $i <= $totalPages; $i++) {
+            $this->setPage($i);
+            $this->SetFont('dejavusans', '', 10);
+            $y = $this->headerPageLineY[$i] ?? null;
+            $this->MultiCell(57, 4, "Page : {$i} / {$totalPages}", '', 'R', false, 1, 150, $y, '', '', false);
+        }
+        $this->setPage($currentPage);
     }
 
     /**
@@ -128,9 +153,7 @@ class BusinessDocumentPDF extends TCPDF
         $this->MultiCell(0, 0, "{$this->documentData["document"]["typeLabel"]} {$documentHeader["number"]}", '', 'R', false, 1, 120, '10', true);
 
         $this->SetFont('dejavusans', '', 10);
-        $this->MultiCell(45, 4, "Page : " . $this->getPage() . " /", '', 'R', false, 0, 150, '', '', '', true);
-        $this->MultiCell(12, 4, $this->getAliasNbPages(), '', 'R', false, 1, '', '', '', '', false);
-        $this->bottomHeader = $this->GetY();
+        $this->headerPageLineY[$this->getPage()] = $this->GetY();
     }
 
     /**
@@ -141,7 +164,7 @@ class BusinessDocumentPDF extends TCPDF
         $documentHeader = $this->documentData["document"]["header"];
 
         $line_height = 4;
-        $label_with = 32;
+        $label_with = 35;
         $field_with = 70;
         $front_size = 10;
 
@@ -156,7 +179,7 @@ class BusinessDocumentPDF extends TCPDF
 
         $labels = [
             "saleorder" => "Validité ",
-            "salequotation" => "Validité du devis",
+            "salequotation" => "Validité",
             "purchaseorder" => "Livraison estimée",
             "invoice" => "Echéance",
             "custcontract" => "Contrat",
@@ -184,14 +207,32 @@ class BusinessDocumentPDF extends TCPDF
                 $this->MultiCell($field_with, $line_height, ' : ' . $documentHeader["ref"], '', 'L', false, 1, '', '', true);
             }
 
-            if (isset($documentHeader["commitment"]) && !empty($documentHeader["commitment"])) {
-                $this->MultiCell($label_with, $line_height, "Votre engagement", '', 'L', false, 0, '', '', true);
+            if (!empty($documentHeader["commitment"])) {
+                $this->MultiCell($label_with, $line_height, "Engagement", '', 'L', false, 0, '', '', true);
                 $this->MultiCell($field_with, $line_height, ' : ' . $documentHeader["commitment"], '', 'L', false, 1, '', '', true);
+            }
+            if (!empty($documentHeader["renew"])) {
+                $this->MultiCell($label_with, $line_height, "Reconduction", '', 'L', false, 0, '', '', true);
+                $this->MultiCell($field_with, $line_height, ' : ' . $documentHeader["renew"], '', 'L', false, 1, '', '', true);
+            }
+            if (!empty($documentHeader["notice"])) {
+                $this->MultiCell($label_with, $line_height, "Préavis", '', 'L', false, 0, '', '', true);
+                $this->MultiCell($field_with, $line_height, ' : ' . $documentHeader["notice"], '', 'L', false, 1, '', '', true);
+            }
+            if (!empty($documentHeader["invoicing"])) {
+                $this->MultiCell($label_with, $line_height, "Périodicité", '', 'L', false, 0, '', '', true);
+                $this->MultiCell($field_with, $line_height, ' : ' . $documentHeader["invoicing"], '', 'L', false, 1, '', '', true);
             }
         }
 
+        // Cadre adaptatif : grandit si les champs d'abonnement sont présents
+        $boxHeight = max(33, $this->GetY() - 39 + 3);
+        // Repousser le début du tableau si le cadre empiète dessus
+        if (39 + $boxHeight + 2 > $this->topYFrameFirstPage) {
+            $this->topYFrameFirstPage = 39 + $boxHeight + 2;
+        }
         $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => $this->lineColor));
-        $this->RoundedRect(10, 39, 90, 33, 2.50, '1000');
+        $this->RoundedRect(10, 39, 90, $boxHeight, 2.50, '1000');
 
         $this->setXY(110, 40);
         $this->SetFont('dejavusans', 'B', $front_size + 1);
@@ -248,16 +289,21 @@ class BusinessDocumentPDF extends TCPDF
         $separatorLine = false;
 
         $this->setY($this->topYFrameFirstPage + self::HEADER_TABLE_H);
-        $addPage = false;
-        $finalyAddPage = false;
         $valign = 'T';
 
         // Déterminer la dernière colonne active
         $colsKeys = array_keys($this->colsW);
         $lastActiveCol = $colsKeys[count($colsKeys) - 2]; // Avant-dernier = dernier avant "sumColsW"
 
-        foreach ($documentLines as $line) {
+        $totalLines = count($documentLines);
+        // Si le dernier item est un sous-total (type 2), l'item avant lui doit aussi
+        // utiliser la limite de la dernière page pour rester groupé avec son sous-total.
+        $lastLineType = $totalLines > 0 ? $documentLines[$totalLines - 1]['type'] : 0;
+
+        foreach ($documentLines as $idx => $line) {
             $curPage = $this->getPage();
+            $isLastItem = ($idx === $totalLines - 1)
+                || ($lastLineType == 2 && $idx === $totalLines - 2);
 
             $html = $line["prtlib"];
             $html .= !empty($line["prtdesc"]) ? $line["prtdesc"] : "";
@@ -277,10 +323,7 @@ class BusinessDocumentPDF extends TCPDF
             }
 
             // Calcul de la hauteur et gestion du page break
-            $heightInfo = $this->calculateCellHeight($html, $colsW["desc"], $defaultStringHeight, $curPage);
-            $finalyAddPage = $heightInfo['finalyAddPage'];
-            $addPage = $heightInfo['addPage'];
-            $endY = $heightInfo['endY'];
+            $heightInfo = $this->calculateCellHeight($html, $colsW["desc"], $defaultStringHeight, $curPage, $isLastItem);
             $stringHeight = $heightInfo['stringHeight'];
 
             $this->setX($this->getMargins()["left"]);
@@ -327,7 +370,7 @@ class BusinessDocumentPDF extends TCPDF
                         $this->MultiCell($colsW["qty_ordered"], $stringHeight, $qtyOrdered, '', 'C', false, ($lastActiveCol === 'qty_ordered'), '', '', true, '', '', true, $stringHeight, $valign);
                     }
 
-                    $qty = !empty($line["qty"]) ? $line["qty"] : "";
+                    $qty = !empty($line["qty"]) ? number_format((float)$line["qty"], 2, ',', ' ') : "";
                     $this->MultiCell($colsW["qty"], $stringHeight, $qty, '', 'C', false, ($lastActiveCol === 'qty'), '', '', true, '', '', true, $stringHeight, $valign);
 
                     if (isset($this->colsW["qty_remaining"])) {
@@ -350,16 +393,9 @@ class BusinessDocumentPDF extends TCPDF
                     break;
             }
 
-            if ($addPage == true) {
-                $this->AddPage();
-                $this->setY($endY);
-            }
         }
 
-        if ($finalyAddPage == true) {
-            $this->AddPage();
-        }
-
+        $this->SetAutoPageBreak(false);
         $this->totals["totaltax"] = $totaltax;
         $this->setCellHeightRatio(1.2);
     }
@@ -367,22 +403,29 @@ class BusinessDocumentPDF extends TCPDF
     /**
      * Calcule la hauteur d'une cellule et gère les sauts de page
      */
-    private function calculateCellHeight($html, $colWidth, $defaultHeight, $curPage)
+    private function calculateCellHeight($html, $colWidth, $defaultHeight, $curPage, $isLastItem = true)
     {
-        // Premier test sans AutoPageBreak
+        $pageHeight = $this->getPageHeight();
+
+        // Premier test AVEC AutoPageBreak (limite OTHERS) pour détecter si le contenu
+        // déborde naturellement sur une nouvelle page, indépendamment de l'état global.
         $this->startTransaction();
-        $startY = $this->GetY();
+        $this->SetAutoPageBreak(true, $pageHeight - self::BOTTOM_FRAMES_OTHERS_PAGES);
         $this->MultiCell($colWidth, $defaultHeight, $html, 1, 'L', false, 1, '', '', true, 0, true, true);
-        $endY = $this->GetY();
-        $nextPage = $this->getPage();
+        $nextPageTest = $this->getPage();
         $this->rollbackTransaction(true);
 
-        // Déterminer la limite de page
-        $pageLimit = ($nextPage > $curPage) ? self::BOTTOM_FRAMES_OTHERS_PAGES : self::BOTTOM_FRAMES_LAST_PAGE;
-        $marginBottom = $this->getPageHeight() - $pageLimit;
+        // Si le contenu déborde la limite OTHERS, ou s'il reste d'autres items après :
+        // la page courante ne sera pas la dernière → utiliser OTHERS (275).
+        // Sinon c'est le dernier item et il tient → utiliser LAST_PAGE (218).
+        $pageLimit = ($nextPageTest > $curPage || !$isLastItem)
+            ? self::BOTTOM_FRAMES_OTHERS_PAGES
+            : self::BOTTOM_FRAMES_LAST_PAGE;
+
+        $marginBottom = $pageHeight - $pageLimit;
         $this->SetAutoPageBreak(true, $marginBottom);
 
-        // Second test avec AutoPageBreak
+        // Second test avec la limite correcte : calcul de la hauteur réelle
         $this->startTransaction();
         $startY = $this->GetY();
         $this->MultiCell($colWidth, $defaultHeight, $html, 1, 'L', false, 1, '', '', true, 0, true, true);
@@ -393,9 +436,6 @@ class BusinessDocumentPDF extends TCPDF
 
         return [
             'stringHeight' => $stringHeight,
-            'endY' => $endY,
-            'addPage' => $nextPage > $curPage,
-            'finalyAddPage' => $nextPage > $curPage
         ];
     }
 
@@ -409,7 +449,38 @@ class BusinessDocumentPDF extends TCPDF
         for ($i = 1; $i <= $numPages; $i++) {
             $this->setPage($i);
             $this->addFrame();
+            if ($i < $numPages) {
+                $this->addSignatureParaph();
+            }
         }
+    }
+
+    /**
+     * Ajoute le paraphe (image de signature) en bas de chaque page intermédiaire
+     */
+    private function addSignatureParaph(): void
+    {
+        $documentHeader = $this->documentData["document"]["header"];
+        if (empty($documentHeader["validation_data"])) {
+            return;
+        }
+
+        $validationData = json_decode($documentHeader["validation_data"], true);
+        if (empty($validationData['signature_image'])) {
+            return;
+        }
+
+        $imgData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $validationData['signature_image']));
+        $tmpPath = sys_get_temp_dir() . '/sig_paraph_' . uniqid() . '.png';
+        file_put_contents($tmpPath, $imgData);
+
+        if (file_exists($tmpPath) && filesize($tmpPath) > 0) {
+            $x = $this->getPageWidth() - $this->getMargins()['right'] - 38;
+            $y = self::BOTTOM_FRAMES_OTHERS_PAGES - 11;
+            $this->Image($tmpPath, $x, $y, 35, 9, 'PNG');
+        }
+
+        @unlink($tmpPath);
     }
 
     /**
@@ -489,6 +560,83 @@ class BusinessDocumentPDF extends TCPDF
     }
 
     /**
+     * Ajoute la clause légale de reconduction tacite pour les abonnements.
+     * S'affiche uniquement si le document contient des lignes d'abonnement.
+     */
+    private function addSubscriptionClause(): void
+    {
+        $documentHeader = $this->documentData["document"]["header"];
+
+        if (empty($documentHeader["has_subscription"])) {
+            return;
+        }
+
+        $this->SetAutoPageBreak(false);
+        $this->setPage($this->getNumPages());
+
+        $posX      = $this->getMargins()["left"];
+        $width     = 95;
+        $lh        = 3.0;
+        $lineStyle = ['width' => 0.3, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => [80, 80, 80]];
+
+        $commitment = $documentHeader["commitment"] ?? '';
+        $renew      = $documentHeader["renew"]      ?? '';
+        $notice     = $documentHeader["notice"]     ?? '';
+        $invoicing  = $documentHeader["invoicing"]  ?? '';
+
+        // Position dynamique : s'appuie sur la fin des coordonnées bancaires
+        $startY = isset($this->bankInfoEndY) ? $this->bankInfoEndY + 2 : self::BOTTOM_FRAMES_LAST_PAGE + 34;
+
+        // Titre
+        $this->SetFont('dejavusans', 'B', 7);
+        $this->setCellPaddings(1, 1, 1, 1);
+        $this->setCellMargins(0, 0, 0, 0);
+        $this->SetFillColorArray([235, 235, 235]);
+        $this->MultiCell($width, 5, 'CONDITIONS D\'ABONNEMENT', 0, 'L', true, 1, $posX, $startY, true);
+
+        // Grille 2 colonnes : champ gauche | champ droit
+        $this->SetFont('dejavusans', '', 6.5);
+        $this->SetFillColor(255, 255, 255);
+        $half = $width / 2;
+
+        $rows = [
+            ['Engagement initial', $commitment],
+            ['Reconduction automatique', $renew],
+            ['Préavis de résiliation', $notice],
+            ['Périodicité de facturation', $invoicing],
+        ];
+
+        foreach ($rows as [$label, $value]) {
+            if (empty($value)) {
+                continue;
+            }
+            $this->setCellPaddings(1, 0.3, 1, 0.3);
+            $this->MultiCell($half, $lh, $label . ' :', 0, 'L', false, 0, $posX);
+            $this->SetFont('dejavusans', 'B', 6.5);
+            $this->MultiCell($half, $lh, $value, 0, 'L', false, 1);
+            $this->SetFont('dejavusans', '', 6.5);
+        }
+
+        // Texte légal
+        $renewLabel  = $renew  ?: 'une durée équivalente';
+        $noticeLabel = $notice ?: 'un préavis contractuel';
+        $legalText = "Conformément à l'article L.215-3 du Code de la consommation, le présent abonnement sera "
+            . "reconduit tacitement à l'issue de la période d'engagement pour une durée de {$renewLabel}. "
+            . "Pour s'y opposer, le Client devra notifier sa résiliation par lettre recommandée avec accusé de réception "
+            . "au moins {$noticeLabel} avant la date d'échéance de la période en cours.";
+
+        $this->SetFont('dejavusans', 'I', 5.5);
+        $this->setCellPaddings(1, 0.5, 1, 0.5);
+        $this->MultiCell($width, $lh - 0.3, $legalText, 0, 'J', false, 1, $posX);
+
+        $endY = $this->GetY();
+
+        // Encadré autour de tout le bloc
+        $this->SetLineStyle($lineStyle);
+        $this->RoundedRect($posX, $startY, $width, $endY - $startY, 1.5, '1111');
+    }
+
+    /**
      * Ajoute les informations de paiement (coordonnées bancaires)
      */
     private function addPaymentInfo()
@@ -498,6 +646,7 @@ class BusinessDocumentPDF extends TCPDF
         $bankInfo = $this->documentData["company"]["bank"] ?? [];
 
         if (empty($bankInfo)) {
+            $this->bankInfoEndY = self::BOTTOM_FRAMES_LAST_PAGE + 11;
             return;
         }
 
@@ -524,6 +673,8 @@ class BusinessDocumentPDF extends TCPDF
         $this->MultiCell(62, 0, "Banque : " . ($bankInfo['bts_label'] ?? ''), '', 'L', false, 1);
         $this->MultiCell(62, 0, "IBAN : " . ($bankInfo['bts_iban'] ?? ''), '', 'L', false, 1);
         $this->MultiCell(62, 0, "BIC/SWIFT : " . ($bankInfo['bts_bic'] ?? ''), '', 'L', false, 1);
+
+        $this->bankInfoEndY = $this->GetY();
     }
 
     /**
@@ -643,28 +794,39 @@ class BusinessDocumentPDF extends TCPDF
         $documentHeader = $this->documentData["document"]["header"];
 
         if (isset($documentHeader["validation_data"]) && !empty($documentHeader["validation_data"])) {
-            $checkPath = public_path("images/check_vert_100x55.png");
-            $valiationData = json_decode($documentHeader["validation_data"], true);
-            $serverTime = date("d/m/Y H:i", strtotime($valiationData["serverTime"]));
-            $name = $valiationData["name"];
-            $ip = $valiationData["ip"];
+            $checkPath     = public_path("images/check_vert_100x55.png");
+            $validationData = json_decode($documentHeader["validation_data"], true);
+            $serverTime    = date("d/m/Y H:i", strtotime($validationData["serverTime"]));
+            $name          = $validationData["name"];
+            $ip            = $validationData["ip"];
 
-            $posY = $this->bottomTotalY + 4;
-            $posX = 114 + 10;
+            $posY        = $this->bottomTotalY + 2;
+            $posX        = 114 + 10;
             $line_height = 4;
 
             if (file_exists($checkPath)) {
                 $this->Image($checkPath, $posX + 10, $posY, 12, 12, 'PNG');
             }
 
-            $this->SetY($posY);
+            // Embarquer l'image du paraphe dessiné si présente
+            if (!empty($validationData['signature_image'])) {
+                $imgData  = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $validationData['signature_image']));
+                $tmpPath  = sys_get_temp_dir() . '/sig_' . uniqid() . '.png';
+                file_put_contents($tmpPath, $imgData);
+                if (file_exists($tmpPath) && filesize($tmpPath) > 0) {
+                    $this->Image($tmpPath, $posX + 25, $posY + 1, 40, 14, 'PNG');
+                }
+                @unlink($tmpPath);
+            }
+
+            $this->SetY($posY + 15);
             $this->SetX($posX);
 
             $this->SetFont('dejavusans', '', 8);
             $this->setCellPaddings(0, 0, 0, 0);
             $this->setCellMargins(0, 0, 0, 0);
             $this->SetLineStyle(array('width' => 0.1, 'cap' => 'butt', 'join' => 'miter', 'dash' => 0, 'color' => array(102, 102, 102)));
-            $this->MultiCell(0, $line_height, "Signé numériquement : $name ", 0, 'L', false, 1, $posX, $posY);
+            $this->MultiCell(0, $line_height, "Signé numériquement : $name ", 0, 'L', false, 1, $posX);
             $this->MultiCell(0, $line_height, "Date : $serverTime", 0, 'L', false, 1, $posX);
             $this->MultiCell(0, $line_height, "IP : $ip", 0, 'L', false, 1, $posX);
         }

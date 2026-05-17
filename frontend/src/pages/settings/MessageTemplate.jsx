@@ -21,7 +21,7 @@ export default function MessageTemplate({ messageTemplateId, open, onClose, onSu
      */
     const categories = [
         { value: "ticket_reply", label: "Ticket réponse prédéfini" },
-        { value: "system",       label: "Système" }
+        { value: "system", label: "Système" }
     ];
 
     /**
@@ -80,7 +80,7 @@ export default function MessageTemplate({ messageTemplateId, open, onClose, onSu
             {messageTemplateId && (
                 <>
                     <div style={{ flex: 1 }}></div>
-                    <CanAccess permission="settings.messagetemplate.delete">
+                    <CanAccess permission="settings.messagetemplates.delete">
                         <Popconfirm
                             title="Supprimer ce modèle"
                             description="Êtes-vous sûr de vouloir supprimer ce modèle de message ?"
@@ -97,14 +97,16 @@ export default function MessageTemplate({ messageTemplateId, open, onClose, onSu
             )}
 
             <Button onClick={handleClose}>Annuler</Button>
-            <Button
-                type="primary"
-                htmlType="submit"
-                icon={<SaveOutlined />}
-                onClick={() => form.submit()}
-            >
-                Enregistrer
-            </Button>
+            <CanAccess permission="settings.messagetemplates.edit">
+                <Button
+                    type="primary"
+                    htmlType="submit"
+                    icon={<SaveOutlined />}
+                    onClick={() => form.submit()}
+                >
+                    Enregistrer
+                </Button>
+            </CanAccess>
         </Space>
     );
 
@@ -227,43 +229,43 @@ export default function MessageTemplate({ messageTemplateId, open, onClose, onSu
                                         {[
                                             {
                                                 label: "Ticket",
-                                                vars: ["ticket.id","ticket.ref","ticket.label","ticket.opened_at","ticket.opened_by","ticket.assigned_to"],
+                                                vars: ["ticket.id", "ticket.ref", "ticket.label", "ticket.opened_at", "ticket.opened_by", "ticket.assigned_to"],
                                             },
                                             {
                                                 label: "Ticket — dernier message",
-                                                vars: ["last_message.date","last_message.body"],
+                                                vars: ["last_message.date", "last_message.body"],
                                             },
                                             {
                                                 label: "Utilisateur",
-                                                vars: ["user.firstname","user.lastname","user.fullname","user.email","user.phone","user.mobile","user.job_title"],
+                                                vars: ["user.firstname", "user.lastname", "user.fullname", "user.email", "user.phone", "user.mobile", "user.job_title"],
                                             },
                                             {
                                                 label: "Entreprise",
-                                                vars: ["company.name","company.address","company.zip","company.city","company.phone","company.email","company.tva_code","company.registration_code","company.legal_status","company.capital","company.rcs","company.url_site","company.mail_parser","company.logo"],
+                                                vars: ["company.name", "company.address", "company.zip", "company.city", "company.phone", "company.email", "company.tva_code", "company.registration_code", "company.legal_status", "company.capital", "company.rcs", "company.url_site", "company.mail_parser", "company.logo"],
                                             },
                                             {
                                                 label: "Client",
-                                                vars: ["partner.id","partner.name","partner.email","partner.phone","partner.mobile","partner.address","partner.zip","partner.city","partner.country","partner.tva_code","partner.siret"],
+                                                vars: ["partner.id", "partner.name", "partner.email", "partner.phone", "partner.mobile", "partner.address", "partner.zip", "partner.city", "partner.country", "partner.tva_code", "partner.siret"],
                                             },
                                             {
                                                 label: "Contact",
-                                                vars: ["contact.id","contact.firstname","contact.lastname","contact.fullname","contact.email","contact.phone","contact.mobile","contact.jobtitle"],
+                                                vars: ["contact.id", "contact.firstname", "contact.lastname", "contact.fullname", "contact.email", "contact.phone", "contact.mobile", "contact.jobtitle"],
                                             },
                                             {
                                                 label: "Vendeur",
-                                                vars: ["seller.id","seller.firstname","seller.lastname","seller.fullname","seller.email","seller.phone"],
+                                                vars: ["seller.id", "seller.firstname", "seller.lastname", "seller.fullname", "seller.email", "seller.phone"],
                                             },
                                             {
                                                 label: "Commande",
-                                                vars: ["order.id","order.number","order.date","order.valid","order.total_ht","order.total_tax","order.total_ttc","order.note","order.ref"],
+                                                vars: ["order.id", "order.number", "order.date", "order.valid", "order.total_ht", "order.total_tax", "order.total_ttc", "order.note", "order.ref"],
                                             },
                                             {
                                                 label: "Facture",
-                                                vars: ["invoice.id","invoice.number","invoice.date","invoice.duedate","invoice.total_ht","invoice.total_tax","invoice.total_ttc","invoice.amount_remaining","invoice.note","invoice.ref"],
+                                                vars: ["invoice.id", "invoice.number", "invoice.date", "invoice.duedate", "invoice.total_ht", "invoice.total_tax", "invoice.total_ttc", "invoice.amount_remaining", "invoice.note", "invoice.ref"],
                                             },
                                             {
                                                 label: "Lignes (FOREACH)",
-                                                vars: ["sub_lines.reference","sub_lines.description","sub_lines.quantity","sub_lines.unit_price","sub_lines.discount","sub_lines.total_ht","sub_lines.tax_rate"],
+                                                vars: ["sub_lines.reference", "sub_lines.description", "sub_lines.quantity", "sub_lines.unit_price", "sub_lines.discount", "sub_lines.total_ht", "sub_lines.tax_rate"],
                                             },
                                         ].map(({ label, vars }) => (
                                             <div key={label} style={{ marginBottom: 10 }}>

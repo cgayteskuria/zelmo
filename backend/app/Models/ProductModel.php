@@ -16,6 +16,11 @@ class ProductModel extends BaseModel
     const CREATED_AT = 'prt_created';
     const UPDATED_AT = 'prt_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['prt_ref', 'prt_label'];
+    }
+
     const TYPE_STOCKABLE = 'conso';
     const TYPE_SERVICE   = 'service';
 

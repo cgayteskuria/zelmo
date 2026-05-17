@@ -5,6 +5,7 @@ import { SaveOutlined } from "@ant-design/icons";
 import { contractConfApi } from "../../services/api";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import MessageTemplateSelect from "../../components/select/MessageTemplateSelect";
+import MessageEmailAccountSelect from "../../components/select/MessageEmailAccountSelect";
 
 /**
  * Composant ContractConf
@@ -105,28 +106,46 @@ export default function ContractConf({ contractConfId, open, onClose, onSubmit, 
                         <Input />
                     </Form.Item>
 
-                    {/* Section: Modèle mail */}
+                    {/* Section: Compte email */}
                     <div className="box" style={{ marginBottom: 24 }}>
-                        <h3
-                            style={{
-                                marginBottom: 16,
-                                fontWeight: "bold",
-                                fontSize: "16px"
-                            }}
-                        >
-                            Modèle mail
+                        <h3 style={{ marginBottom: 16, fontWeight: "bold", fontSize: "16px" }}>
+                            Compte email
+                        </h3>
+                        <Row gutter={[16, 8]}>
+                            <Col span={24}>
+                                <Form.Item
+                                    name="fk_eml_id"
+                                    label="Compte email pour l'envoi des contrats et demandes de signature"
+                                    rules={[{ required: true, message: "Le compte email est requis" }]}
+                                >
+                                    <MessageEmailAccountSelect
+                                        placeholder="Sélectionner un compte email..."
+                                    />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </div>
+
+                    {/* Section: Modèles mail */}
+                    <div className="box" style={{ marginBottom: 24 }}>
+                        <h3 style={{ marginBottom: 16, fontWeight: "bold", fontSize: "16px" }}>
+                            Modèles mail
                         </h3>
                         <Row gutter={[16, 8]}>
                             <Col span={24}>
                                 <Form.Item
                                     name="fk_emt_id"
-                                    label="Modèle par défaut"
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: "Ce modèle est requis"
-                                        }
-                                    ]}
+                                    label="Modèle par défaut (envoi contrat)"
+                                    rules={[{ required: true, message: "Ce modèle est requis" }]}
+                                >
+                                    <MessageTemplateSelect />
+                                </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                                <Form.Item
+                                    name="fk_emt_id_sign_request"
+                                    label="Demande de signature électronique"
+                                    rules={[{ required: true, message: "Ce modèle est requis" }]}
                                 >
                                     <MessageTemplateSelect />
                                 </Form.Item>

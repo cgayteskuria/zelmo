@@ -125,6 +125,7 @@ class PermissionSeeder extends Seeder
 
         $additionalPermissions[] = "opportunities.view_all";
         $additionalPermissions[] = "prospect-activities.view_all";
+        $additionalPermissions[] = "prospect-activities.view_team";
 
         $additionalPermissions[] = "time.projects.view";
         $additionalPermissions[] = "time.approve";

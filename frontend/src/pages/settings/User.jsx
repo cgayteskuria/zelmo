@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Form, Input, Button, Row, Col, Switch, Popconfirm, Divider, Tag, Space, Tabs, App, Checkbox, Collapse, Spin } from "antd";
-import { DeleteOutlined, SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, KeyOutlined, LockOutlined } from "@ant-design/icons";
+import { Drawer, Form, Input, Button, Row, Col, Switch, Popconfirm, Divider, Tag, Space, Tabs, App, Checkbox, Collapse, Spin, InputNumber, Statistic, Tooltip } from "antd";
+import { DeleteOutlined, SaveOutlined, UserOutlined, MailOutlined, PhoneOutlined, KeyOutlined, LockOutlined, PhoneFilled, InfoCircleOutlined } from "@ant-design/icons";
 import { usersApi, rolesApi } from "../../services/api";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import CanAccess from "../../components/common/CanAccess";
@@ -22,6 +22,7 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
     const [allPermissions, setAllPermissions] = useState({});
     const [selectedRoles, setSelectedRoles] = useState([]);
     const [selectedDirectPermissions, setSelectedDirectPermissions] = useState([]);
+    const [managedSellerIds, setManagedSellerIds] = useState([]);
 
     const [activeTab, setActiveTab] = useState('1');
     const pageLabel = Form.useWatch('usr_login', form);
@@ -29,23 +30,23 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
 
 
     const onDataLoadedCallback = useCallback(async (data) => {
-        // Charger les permissions de l'utilisateur si édition   
         if (data.usr_id) {
             try {
-
                 setSelectedRoles(data.roles?.map(r => r.id) || []);
-                // Charger toutes les permissions
+
                 const permsResponse = await rolesApi.getAllPermissions();
                 setAllPermissions(permsResponse.data || {});
 
                 const perms = await usersApi.getPermissions(userId);
                 setSelectedDirectPermissions(perms.data.direct_permissions || []);
 
+                const sellersResponse = await usersApi.getManagedSellers(userId);
+                const sellers = sellersResponse.data?.data || [];
+                setManagedSellerIds(sellers.map(s => s.id));
             } catch (error) {
-                console.error("Erreur lors du chargement des rôles et  permissions:", error);
+                console.error("Erreur lors du chargement des rôles et permissions:", error);
             }
         }
-
     }, []);
     /**
      * Fonctions CRUD
@@ -61,11 +62,9 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
             // Sauvegarder les rôles et permissions si édition
             if (userId && action === 'update') {
                 try {
-                    // Synchroniser les rôles             
                     await usersApi.syncRoles(userId, selectedRoles);
-
-                    // Synchroniser les permissions directes
                     await usersApi.syncPermissions(userId, selectedDirectPermissions);
+                    await usersApi.syncManagedSellers(userId, managedSellerIds);
                 } catch (error) {
                     message.error('Erreur lors de la mise à jour des rôles/permissions');
                 }
@@ -398,10 +397,17 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
                                 </Form.Item>
                             </Col>
 
-                            <Col span={4}>
+                            <Col span={5}>
                                 <Form.Item
                                     name="usr_is_seller"
-                                    label="Commercial"
+                                    label={
+                                        <span>
+                                            Commercial&nbsp;
+                                            <Tooltip title="Affiche l'utilisateur dans liste commercial">
+                                                <InfoCircleOutlined style={{ color: "#1677ff", cursor: "help" }} />
+                                            </Tooltip>
+                                        </span>
+                                    }
                                     valuePropName="checked"
                                     initialValue={false}
                                 >
@@ -409,10 +415,17 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
                                 </Form.Item>
                             </Col>
 
-                            <Col span={4}>
+                            <Col span={5}>
                                 <Form.Item
                                     name="usr_is_technician"
-                                    label="Technicien"
+                                    label={
+                                        <span>
+                                            Technicien&nbsp;
+                                            <Tooltip title="Affiche l'utilisateur dans liste technicien">
+                                                <InfoCircleOutlined style={{ color: "#1677ff", cursor: "help" }} />
+                                            </Tooltip>
+                                        </span>
+                                    }
                                     valuePropName="checked"
                                     initialValue={false}
                                 >
@@ -420,10 +433,17 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
                                 </Form.Item>
                             </Col>
 
-                            <Col span={4}>
+                            <Col span={5}>
                                 <Form.Item
                                     name="usr_is_employee"
-                                    label="Salarié"
+                                    label={
+                                        <span>
+                                            Salarié&nbsp;
+                                            <Tooltip title="Affiche l'utilisateur dans liste salarié">
+                                                <InfoCircleOutlined style={{ color: "#1677ff", cursor: "help" }} />
+                                            </Tooltip>
+                                        </span>
+                                    }
                                     valuePropName="checked"
                                     initialValue={false}
                                 >
@@ -468,14 +488,47 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
                         )}
 
 
+                        <Divider titlePlacement="left" style={{ fontWeight: "600" }}>
+                            <PhoneFilled /> Quotas d'enrichissement
+                        </Divider>
+                        <Row gutter={16} align="bottom">
+                            <Col span={8}>
+                                <Form.Item
+                                    name="usr_enrichment_credits_limit"
+                                    label="Limite de crédits mobiles / mois"
+                                    tooltip="Laissez vide pour un accès illimité. Chaque révélation de mobile consomme 1 crédit."
+                                >
+                                    <InputNumber
+                                        min={0}
+                                        style={{ width: '100%' }}
+                                        placeholder="Illimité"
+                                    />
+                                </Form.Item>
+                            </Col>
+                            {entity?.usr_enrichment_credits_used !== undefined && (
+                                <Col span={8}>
+                                    <Form.Item label="Crédits utilisés ce mois">
+                                        <Statistic
+                                            value={entity.usr_enrichment_credits_used ?? 0}
+                                            suffix={entity.usr_enrichment_credits_limit
+                                                ? `/ ${entity.usr_enrichment_credits_limit}`
+                                                : ''}
+                                            valueStyle={{ fontSize: 16 }}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            )}
+                        </Row>
+
                     </div>
+
                 </>
             ),
         },
         ...(userId ? [
             {
                 key: '2',
-                label: `Rôles (${selectedRoles.length})`,
+                label: `Rôles & accès (${selectedRoles.length})`,
                 children: (
                     <>
                         <Divider titlePlacement="left">
@@ -492,6 +545,26 @@ export default function User({ userId, open, onClose, onSubmit, drawerSize = "la
                             style={{ width: '100%' }}
                             value={selectedRoles}
                             onChange={setSelectedRoles}
+                        />
+
+                        <Divider titlePlacement="left" style={{ marginTop: 24 }}>
+                            Commerciaux supervisés
+                        </Divider>
+
+                        <p style={{ marginBottom: 12, color: '#666' }}>
+                            Commerciaux dont cet utilisateur peut consulter le calendrier d'activités.
+                            La permission <code>prospect-activities.view_team</code> est également requise.
+                        </p>
+
+                        <UserSelect
+                            mode="multiple"
+                            value={managedSellerIds}
+                            onChange={setManagedSellerIds}
+                            filters={{ is_seller: 1 }}
+                            loadInitially
+                            allowClear
+                            style={{ width: '100%' }}
+                            placeholder="Aucun commercial supervisé"
                         />
                     </>
                 ),

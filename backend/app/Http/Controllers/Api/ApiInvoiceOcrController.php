@@ -16,6 +16,7 @@ use App\Models\InvoiceLineModel;
 use App\Models\AccountTaxModel;
 use App\Models\PurchaseOrderConfigModel;
 use App\Models\PartnerModel;
+use App\Models\ProductModel;
 
 class ApiInvoiceOcrController extends Controller
 {
@@ -162,7 +163,7 @@ class ApiInvoiceOcrController extends Controller
             'lines' => 'required|array|min:1',
             'lines.*.fk_prt_id' => 'nullable|integer',
             'lines.*.fk_tax_id' => 'required|integer|exists:account_tax_tax,tax_id',
-            'lines.*.inl_prtlib' => 'required|string|max:255',
+            'lines.*.inl_prtlib' => 'nullable|string|max:255',
             'lines.*.inl_prtdesc' => 'nullable|string',
             'lines.*.inl_qty' => 'required|numeric|min:0',
             'lines.*.inl_priceunitht' => 'required|numeric',
@@ -197,6 +198,10 @@ class ApiInvoiceOcrController extends Controller
 
             $invoice = $this->invoiceService->createInvoice($invoiceData, $userId);
 
+            // Pre-load products to resolve inl_prtlib from prt_label when not provided
+            $productIds = collect($request->lines)->pluck('fk_prt_id')->filter()->unique()->values();
+            $products = ProductModel::whereIn('prt_id', $productIds)->pluck('prt_label', 'prt_id');
+
             // Create lines
             $order = 1;
             foreach ($request->lines as $lineData) {
@@ -204,13 +209,18 @@ class ApiInvoiceOcrController extends Controller
                 $tax = AccountTaxModel::find($lineData['fk_tax_id']);
                 $taxRate = $tax ? $tax->tax_rate : 20;
 
+                $prtId = $lineData['fk_prt_id'] ?? null;
+                $prtLib = !empty($lineData['inl_prtlib'])
+                    ? $lineData['inl_prtlib']
+                    : ($prtId ? ($products[$prtId] ?? null) : null);
+
                 $line = new InvoiceLineModel([
                     'fk_inv_id' => $invoice->inv_id,
                     'inl_order' => $order++,
                     'inl_type' => 0, // Normal line
-                    'fk_prt_id' => $lineData['fk_prt_id'] ?? null,
+                    'fk_prt_id' => $prtId,
                     'fk_tax_id' => $lineData['fk_tax_id'],
-                    'inl_prtlib' => $lineData['inl_prtlib'],
+                    'inl_prtlib' => $prtLib,
                     'inl_prtdesc' => $lineData['inl_prtdesc'] ?? null,
                     'inl_qty' => $lineData['inl_qty'],
                     'inl_priceunitht' => $lineData['inl_priceunitht'],

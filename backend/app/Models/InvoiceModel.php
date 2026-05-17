@@ -22,6 +22,11 @@ class InvoiceModel extends BizDocumentModel
     const CREATED_AT = 'inv_created';
     const UPDATED_AT = 'inv_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['inv_number'];
+    }
+
     protected $guarded = [];
 
 
@@ -49,11 +54,11 @@ class InvoiceModel extends BizDocumentModel
                     $model->inv_number = static::generateProvisionalNumber($model->inv_operation);
                 } else {
                     // Facture créée directement finalisée (ex: avoir via createCreditNote)
-                    $lastInvoice = static::where('inv_operation', $model->inv_operation)
+                    $lastNumber = DB::table('invoice_inv')
+                        ->where('inv_operation', $model->inv_operation)
                         ->where('inv_number', 'not like', 'PROV-%')
-                        ->orderBy('inv_id', 'desc')
-                        ->first();
-                    $lastNumber = $lastInvoice ? $lastInvoice->inv_number : null;
+                        ->lockForUpdate()
+                        ->max('inv_number');
                     $model->inv_number = static::generateSequenceNumber($moduleMapping[$model->inv_operation], '', $lastNumber);
                 }
             }
@@ -63,11 +68,11 @@ class InvoiceModel extends BizDocumentModel
                 && $model->inv_status == self::STATUS_FINALIZED
                 && str_starts_with($model->inv_number ?? '', 'PROV-')
             ) {
-                $lastInvoice = static::where('inv_operation', $model->inv_operation)
+                $lastNumber = DB::table('invoice_inv')
+                    ->where('inv_operation', $model->inv_operation)
                     ->where('inv_number', 'not like', 'PROV-%')
-                    ->orderBy('inv_id', 'desc')
-                    ->first();
-                $lastNumber = $lastInvoice ? $lastInvoice->inv_number : null;
+                    ->lockForUpdate()
+                    ->max('inv_number');
                 $model->inv_number = static::generateSequenceNumber($moduleMapping[$model->inv_operation], '', $lastNumber);
             }
 
@@ -96,8 +101,8 @@ class InvoiceModel extends BizDocumentModel
                 throw new \Exception('Impossible de modifier une facture comptabilisée');
             }
 
-            // Protection des champs financiers pour STATUS_FINALIZED
-            if ($originalStatus == self::STATUS_FINALIZED) {
+            // Protection des champs financiers pour STATUS_FINALIZED (sauf si la facture est en mode édition)
+            if ($originalStatus == self::STATUS_FINALIZED && !$model->getOriginal('inv_being_edited')) {
                 $protectedFields = [
                     'inv_date',
                     'inv_duedate',

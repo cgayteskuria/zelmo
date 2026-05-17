@@ -266,7 +266,7 @@ export const useMenu = (appId = null) => {
             const label = (hasChildren && children?.length > 0)
                 ? (menu.mnu_lib || 'Menu sans nom')
                 : (
-                    <Link to={menu.mnu_href || '/'} style={{ textAlign: 'left', display: 'block' }}>
+                    <Link to={menu.mnu_href || '/'} state={{ sourceAppId: appId }} style={{ textAlign: 'left', display: 'block' }}>
                         {menu.mnu_lib || 'Menu sans nom'}
                     </Link>
                 );

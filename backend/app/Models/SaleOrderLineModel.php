@@ -26,6 +26,7 @@ class SaleOrderLineModel extends BizDocumentLineModel
         'orl_mtht' => 'decimal:3',
         'orl_tax_rate' => 'decimal:2',
         'orl_is_subscription' => 'boolean',
+        'orl_delivered_qty' => 'decimal:3',
     ];
 
     /**

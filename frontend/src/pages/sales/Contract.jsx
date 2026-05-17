@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo, useCallback, lazy, Suspense, useRef } from "react";
 import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Checkbox, Divider } from "antd";
 import { message } from '../../utils/antdStatic';
-import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, UnlockOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, UnlockOutlined, SafetyCertificateOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useListNavigation } from "../../hooks/useListNavigation";
 import dayjs from "dayjs";
 import PageContainer from "../../components/common/PageContainer";
 import { contractsGenericApi, partnersApi } from "../../services/api";
@@ -20,6 +21,7 @@ import TaxPositionSelect from "../../components/select/TaxPositionSelect";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import { formatStatus, CONTRACT_STATUS, CONTRACT_OPERATION, getModuleConfig } from "../../configs/ContractConfig";
 import { handleBizPrint } from "../../utils/BizDocumentUtils.js";
+import { prepareSignatureToken, storeSignerEmail } from "../../services/apiSignature";
 import { createDateValidator } from '../../utils/writingPeriod';
 import BizDocumentLinesTable from "../../components/bizdocument/BizDocumentLinesTable";
 import BizDocumentMarginTable, { calculateMargins } from "../../components/bizdocument/BizDocumentMarginTable";
@@ -28,6 +30,7 @@ import CanAccess from "../../components/common/CanAccess";
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 const ContractTerminationModal = lazy(() => import('../../components/bizdocument/ContractTerminationModal'));
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
 
@@ -57,6 +60,8 @@ export default function Contract() {
     const [searchParams] = useSearchParams();
     const [form] = Form.useForm();
 
+    const { hasNav, hasPrev, hasNext, goToPrev, goToNext, position } = useListNavigation();
+
     const contractId = id === 'new' ? null : parseInt(id, 10);
     const conOperationParam = searchParams.get('con_operation'); // Récupère con_operation de l'URL
 
@@ -73,6 +78,9 @@ export default function Contract() {
     const [terminateModalOpen, setTerminateModalOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [emailAttachments, setEmailAttachments] = useState([]);
+    const [isSignatureEmailMode, setIsSignatureEmailMode] = useState(false);
+    const [signatureTemplateData, setSignatureTemplateData] = useState({});
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
     const [documentsCount, setDocumentsCount] = useState(undefined);
     const [showMarginTable, setShowMarginTable] = useState(false);
@@ -159,7 +167,7 @@ export default function Contract() {
     /**
      * Instance du formulaire CRUD
      */
-    const { submit, remove, loading, loadError, entity } = useEntityForm({
+    const { submit, remove, loading, loadError, reload, entity } = useEntityForm({
         api: contractsGenericApi,
         entityId: contractId,
         idField: 'con_id',
@@ -170,6 +178,23 @@ export default function Contract() {
         onDelete: onDeleteCallback,
         onDataLoaded: onDataLoadedCallback,
     });
+
+    // Date d'envoi de la demande de signature (si envoyée et pas encore signée)
+    const signSentAt = useMemo(() => {
+        if (!entity?.con_sign_token || entity?.con_sign_token_used_at) return null;
+        try {
+            const audit = JSON.parse(entity.con_sign_audit || '{}');
+            const firstEvent = audit?.events?.[0];
+            if (firstEvent?.at) return dayjs(firstEvent.at).format('DD/MM/YYYY HH:mm');
+        } catch {
+            // ignore
+        }
+        // Fallback : recalculer depuis la date d'expiration - 30 jours
+        if (entity?.con_sign_token_expires_at) {
+            return dayjs(entity.con_sign_token_expires_at).subtract(30, 'day').format('DD/MM/YYYY HH:mm');
+        }
+        return null;
+    }, [entity]);
 
     // Fonction helper pour formater les dates des valeurs du formulaire
     const formatFormDates = useCallback((values) => ({
@@ -488,6 +513,27 @@ export default function Contract() {
                 content: error.message || "Erreur lors de la préparation de l'email",
                 key: "emailPrep",
             });
+        }
+    }, [contractId]);
+
+    const handleSignSend = useCallback(async () => {
+        if (!contractId) {
+            message.error("Veuillez enregistrer le contrat avant de l'envoyer");
+            return;
+        }
+        try {
+            message.loading({ content: "Préparation de l'email...", key: "emailPrep" });
+            const signResponse = await prepareSignatureToken('contracts', contractId);
+            setSignatureTemplateData({
+                signature_url:   signResponse.data.signature_url,
+                sign_expires_at: signResponse.data.sign_expires_str,
+            });
+            message.destroy("emailPrep");
+            setIsSignatureEmailMode(true);
+            setEmailDialogOpen(true);
+        } catch (error) {
+            console.error("Erreur lors de la préparation de l'email:", error);
+            message.error({ content: error.message || "Erreur lors de la préparation de l'email", key: "emailPrep" });
         }
     }, [contractId]);
 
@@ -888,6 +934,26 @@ export default function Contract() {
                                         </Col>
                                     </Row>
                                 )}
+                                {contractId && conStatus === CONTRACT_STATUS.DRAFT && conBeingEdited === false && (
+                                    <Row gutter={8}>
+                                        <Col span={24}>
+                                            <Button
+                                                type="primary"
+                                                size="default"
+                                                icon={<SafetyCertificateOutlined />}
+                                                onClick={handleSignSend}
+                                                style={{
+                                                    width: '100%',
+                                                    margin: "4px",
+                                                    backgroundColor: signSentAt ? "#8c8c8c" : "#389e0d",
+                                                    borderColor: signSentAt ? "#8c8c8c" : "#389e0d",
+                                                }}
+                                            >
+                                                {signSentAt ? `Envoyé le ${signSentAt}` : 'Envoyer pour signature'}
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                )}
                                 {
                                     contractId && (
                                         <Row gutter={8}>
@@ -1021,6 +1087,16 @@ export default function Contract() {
                     </Suspense>
                 )
             });
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="contract" entityId={contractId} refreshKey={historyRefreshKey} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
@@ -1058,6 +1134,13 @@ export default function Contract() {
             }}
             actions={
                 <Space>
+                    {hasNav && (
+                        <>
+                            <Button icon={<LeftOutlined />} onClick={goToPrev} disabled={!hasPrev} title="Précédent" />
+                            <span style={{ fontSize: 12, color: '#888' }}>{position}</span>
+                            <Button icon={<RightOutlined />} onClick={goToNext} disabled={!hasNext} title="Suivant" />
+                        </>
+                    )}
                     <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
                         Retour
                     </Button>
@@ -1126,12 +1209,25 @@ export default function Contract() {
                         onClose={() => {
                             setEmailDialogOpen(false);
                             setEmailAttachments([]);
+                            setIsSignatureEmailMode(false);
+                            setSignatureTemplateData({});
                         }}
-                        emailContext={conOperation === CONTRACT_OPERATION.CUSTOMER_CONTRACT ? "sale" : "company"}
-                        templateType="contract"
+                        emailContext={isSignatureEmailMode ? "contract" : (conOperation === CONTRACT_OPERATION.CUSTOMER_CONTRACT ? "sale" : "company")}
+                        templateType={isSignatureEmailMode ? "sign_request" : "contract"}
+                        templateData={isSignatureEmailMode ? signatureTemplateData : {}}
                         documentId={contractId}
                         partnerId={fkPtrId}
                         initialAttachments={emailAttachments}
+                        onSendSuccess={(sentTo) => {
+                            if (isSignatureEmailMode) {
+                                storeSignerEmail('contracts', contractId, sentTo?.join(','));
+                                reload();
+                                message.success('Demande de signature envoyée avec succès');
+                            }
+                            setHistoryRefreshKey(k => k + 1);
+                        }}
+                        entityType="contract"
+                        entityId={contractId}
                     />
                 </Suspense>
             )}

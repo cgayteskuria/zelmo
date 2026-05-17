@@ -50,7 +50,12 @@ export default function Contracts() {
 
     // Handler pour ouvrir un contrat existant
     const handleRowClick = (row) => {
-        navigate(`${config.basePath}/${row.id}`);
+        const rows = gridRef.current?.getData() || [];
+        const ids = rows.map(r => r.id);
+        const currentIndex = ids.indexOf(row.id);
+        navigate(`${config.basePath}/${row.id}`, {
+            state: { ids, currentIndex, basePath: config.basePath },
+        });
     };
 
     // Colonnes du tableau

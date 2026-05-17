@@ -17,6 +17,7 @@ export * from "./apiExpenses.js";
 export * from "./apiTickets.js";
 export * from "./apiProspect.js";
 export * from "./apiEInvoicing.js";
+export * from "./apiHistory.js";
 export const dashboardApi = {
     activity: () => api.get("/dashboard/activity"),
 };
@@ -202,6 +203,11 @@ export const suppliersApi = {
 
 export const prospectsApi = {
   ...createCrudApi(api, "prospects", true),
+  archive: (id) => api.post(`/partners/${id}/archive-prospect`),
+};
+
+export const prospectsArchivedApi = {
+  list: (params = {}) => api.get('/prospects', { params: { ...params, archived: 1 } }),
 };
 /**
  * API Prospects (liste filtrée des partenaires)
@@ -270,6 +276,13 @@ export const devicesApi = {
 export const contactsApi = {
   ...createCrudApi(api, "contacts", true),
 
+  checkDuplicate: (data) => api.post('/contacts/check-duplicate', {
+    ctc_firstname: data.ctc_firstname,
+    ctc_lastname:  data.ctc_lastname,
+    ctc_email:     data.ctc_email,
+    ctc_id:        data.ctc_id,
+  }),
+
   getDevices: (contactId) => api.get(`/contacts/${contactId}/devices`),
 
   linkDevice: (contactId, deviceId) =>
@@ -280,6 +293,26 @@ export const contactsApi = {
 
   attachPartner: (contactId, ptrId) =>
     api.post(`/contacts/${contactId}/attach-partner`, { ptr_id: ptrId }),
+};
+
+// Contacts liés aux sociétés prospects
+export const prospectContactsApi = {
+  list: (params) => api.get('/prospect-contacts', { params }),
+};
+
+// Contacts liés aux sociétés prospects archivées
+export const prospectContactsArchivedApi = {
+  list: (params) => api.get('/prospect-contacts', { params: { ...params, archived: 1 } }),
+};
+
+// Contacts liés aux sociétés clientes (is_customer=true)
+export const customerContactsApi = {
+  list: (params) => api.get('/customer-contacts', { params }),
+};
+
+// Contacts liés aux sociétés fournisseurs (is_supplier=true)
+export const supplierContactsApi = {
+  list: (params) => api.get('/supplier-contacts', { params }),
 };
 
 // products
@@ -406,6 +439,11 @@ export const usersApi = {
   // Retirer une permission directe
   revokePermission: (userId, permission) =>
     api.post(`/users/${userId}/permissions/revoke`, { permission }),
+
+  // Commerciaux supervisés par un manager
+  getManagedSellers: (userId) => api.get(`/users/${userId}/managed-sellers`),
+  syncManagedSellers: (userId, sellerIds) =>
+    api.post(`/users/${userId}/managed-sellers`, { seller_ids: sellerIds }),
 };
 
 /***/

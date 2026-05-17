@@ -5,21 +5,39 @@ const MENU_CACHE_KEY = 'app_menu_v2';
 
 /**
  * Détecte dynamiquement l'application active en comparant le chemin courant
- * aux routes (mnu_href) connues pour chaque fk_app_id dans le cache menu.
+ * aux routes (mnu_href) connues pour chaque application.
  *
- * Entièrement dynamique : aucun préfixe hardcodé.
- * Dépend uniquement du cache sessionStorage (chargé par useMenu).
+ * Stratégie (dans l'ordre) :
+ * 1. app.menus (chargé via la relation Eloquent dans getApplicationsApi, réactif)
+ * 2. Cache menu sessionStorage (fk_app_id → routes)
+ * 3. Fallback app_root_href prefix
  *
  * @param {Array} applications - Liste des applications (depuis useApplications)
  * @returns {{ activeApp: Object|null, activeAppId: number|null }}
  */
 export const useActiveApp = (applications) => {
-    const { pathname } = useLocation();
+    const { pathname, state } = useLocation();
 
     const activeApp = useMemo(() => {
         if (!applications || applications.length === 0) return null;
 
-        // Construire le mapping fk_app_id → routes depuis le cache menu
+        // 0. Navigation depuis un menu : le state porte l'app source (évite les conflits sur les routes partagées)
+        if (state?.sourceAppId) {
+            const sourceApp = applications.find(a => a.app_id === state.sourceAppId);
+            if (sourceApp) return sourceApp;
+        }
+
+        // 1. Menus chargés avec chaque application (via relation fk_app_id, réactif)
+        for (const app of applications) {
+            if (app.menus && Array.isArray(app.menus) && app.menus.length > 0) {
+                const match = app.menus.some(
+                    menu => menu.mnu_href && (pathname === menu.mnu_href || pathname.startsWith(menu.mnu_href + '/'))
+                );
+                if (match) return app;
+            }
+        }
+
+        // 2. Cache menu sessionStorage (fk_app_id → routes)
         const hrefsByApp = {};
         try {
             const cached = sessionStorage.getItem(MENU_CACHE_KEY);
@@ -35,11 +53,9 @@ export const useActiveApp = (applications) => {
                 });
             }
         } catch {
-            // Cache absent ou corrompu — on ne peut pas détecter l'app
-            return null;
+            // Cache absent ou corrompu — on passe au fallback
         }
 
-        // Chercher l'application dont une route est un préfixe du chemin courant
         for (const app of applications) {
             const routes = hrefsByApp[app.app_id] || [];
             const match = routes.some(
@@ -48,7 +64,7 @@ export const useActiveApp = (applications) => {
             if (match) return app;
         }
 
-        // Fallback : app dont app_root_href est un préfixe
+        // 3. Fallback : app dont app_root_href est un préfixe exact du chemin
         for (const app of applications) {
             if (app.app_root_href && pathname.startsWith(app.app_root_href)) {
                 return app;
@@ -56,7 +72,7 @@ export const useActiveApp = (applications) => {
         }
 
         return null;
-    }, [pathname, applications]);
+    }, [pathname, state, applications]);
 
     return {
         activeApp,

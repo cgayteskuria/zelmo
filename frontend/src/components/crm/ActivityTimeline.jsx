@@ -9,7 +9,7 @@ import { prospectActivitiesApi } from "../../services/apiProspect";
 import { ACTIVITY_TYPES, formatActivityType } from "../../configs/OpportunityConfig";
 import ActivityFormModal from "./ActivityFormModal";
 
-export default function ActivityTimeline({ opportunityId, partnerId, partnerInitialData }) {
+export default function ActivityTimeline({ opportunityId, partnerId, partnerInitialData, contactId, contactInitialData, defaultPartnerId, defaultPartnerInitialData }) {
     const { message } = App.useApp();
     const [activities, setActivities] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -17,17 +17,22 @@ export default function ActivityTimeline({ opportunityId, partnerId, partnerInit
     const [selectedActivityId, setSelectedActivityId] = useState(null);
     const [includeOppActivities, setIncludeOppActivities] = useState(false);
 
-    // Mode partner = partnerId sans opportunityId
-    const isPartnerMode = !opportunityId && !!partnerId;
+    // Mode partner = partnerId sans opportunityId ni contactId
+    const isPartnerMode = !opportunityId && !!partnerId && !contactId;
+    // Mode contact = contactId sans partnerId ni opportunityId
+    const isContactMode = !opportunityId && !partnerId && !!contactId;
 
     const loadActivities = useCallback(async () => {
-        if (!opportunityId && !partnerId) return;
+        if (!opportunityId && !partnerId && !contactId) return;
         setLoading(true);
         try {
             let res;
             if (opportunityId) {
                 res = await prospectActivitiesApi.byOpportunity(opportunityId);
                 setActivities(res.data || []);
+            } else if (contactId) {
+                res = await prospectActivitiesApi.byContact(contactId);
+                setActivities(res?.data || []);
             } else {
                 res = await prospectActivitiesApi.byPartner(partnerId, {
                     include_opportunity_activities: includeOppActivities ? 1 : 0,
@@ -39,7 +44,7 @@ export default function ActivityTimeline({ opportunityId, partnerId, partnerInit
         } finally {
             setLoading(false);
         }
-    }, [opportunityId, partnerId, includeOppActivities]);
+    }, [opportunityId, partnerId, contactId, includeOppActivities]);
 
     useEffect(() => {
         loadActivities();
@@ -112,9 +117,12 @@ export default function ActivityTimeline({ opportunityId, partnerId, partnerInit
                     <div style={{ color: "#888", fontSize: 12 }}>
                         {dayjs(act.pac_date).format("DD/MM/YYYY HH:mm")}
                         {act.pac_due_date && <> — Échéance : {dayjs(act.pac_due_date).format("DD/MM/YYYY")}</>}
-                        {act.pac_duration && <> — {act.pac_duration} min</>}
+
                         {act.author_name && <> — par {act.author_name}</>}
                     </div>
+                    {isContactMode && act.ptr_name && (
+                        <div style={{ fontSize: 12, color: "#888" }}>Société : {act.ptr_name}</div>
+                    )}
                     {act.pac_description && (
                         <div style={{ marginTop: 4, color: "#555" }}>{act.pac_description}</div>
                     )}
@@ -129,12 +137,12 @@ export default function ActivityTimeline({ opportunityId, partnerId, partnerInit
                 <Button type="secondary" icon={<PlusOutlined />} onClick={handleCreate}>
                     Ajouter une activité
                 </Button>
-                {isPartnerMode ? (
+                {isPartnerMode && (
                     <Space>
                         <Switch checked={includeOppActivities} onChange={setIncludeOppActivities} size="small" />
                         <span>Voir aussi les activités liées aux opportunités</span>
                     </Space>
-                ) : <span />}
+                )}
 
             </div>
 
@@ -151,7 +159,13 @@ export default function ActivityTimeline({ opportunityId, partnerId, partnerInit
                     open={drawerOpen}
                     onClose={() => { setDrawerOpen(false); setSelectedActivityId(null); }}
                     activityId={selectedActivityId}
-                    defaultValues={opportunityId ? { fk_opp_id: opportunityId, fk_ptr_id: partnerId, partnerInitialData:partnerInitialData } : { fk_ptr_id: partnerId, partnerInitialData:partnerInitialData  }}
+                    defaultValues={
+                        isContactMode
+                            ? { ctc_ids: [contactId], fk_ptr_id: defaultPartnerId ?? undefined, partnerInitialData: defaultPartnerInitialData, contactInitialData }
+                            : opportunityId
+                                ? { fk_opp_id: opportunityId, fk_ptr_id: partnerId, partnerInitialData }
+                                : { fk_ptr_id: partnerId, partnerInitialData }
+                    }
                     onSubmit={handleFormSubmit}
                 />
             )}

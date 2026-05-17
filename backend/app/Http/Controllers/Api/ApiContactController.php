@@ -38,14 +38,24 @@ class ApiContactController extends Controller
             )
             ->groupBy('ctd.fk_ctc_id');
 
+        $partnerSubQuery = DB::table('contact_partner_ctp as ctp')
+            ->leftJoin('partner_ptr as ptr', 'ctp.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->select(
+                'ctp.fk_ctc_id',
+                DB::raw('GROUP_CONCAT(DISTINCT ptr.ptr_name ORDER BY ptr.ptr_name SEPARATOR \', \') AS partner_names')
+            )
+            ->groupBy('ctp.fk_ctc_id');
+
         $query = ContactModel::from('contact_ctc as ctc')
-            ->leftJoin('partner_ptr as ptr', 'ctc.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->leftJoinSub($partnerSubQuery, 'prt', function ($join) {
+                $join->on('ctc.ctc_id', '=', 'prt.fk_ctc_id');
+            })
             ->leftJoinSub($deviceSubQuery, 'dvc', function ($join) {
                 $join->on('ctc.ctc_id', '=', 'dvc.fk_ctc_id');
             })
             ->select([
                 'ctc.ctc_id as id',
-                'ptr.ptr_name',
+                DB::raw("COALESCE(prt.partner_names, '') AS ptr_name"),
                 'ctc.ctc_firstname',
                 'ctc.ctc_lastname',
                 'ctc.ctc_email',
@@ -55,7 +65,7 @@ class ApiContactController extends Controller
             ]);
 
         $this->applyGridFilters($query, $request, [
-            'ptr_name'      => 'ptr.ptr_name',
+            'ptr_name'      => 'prt.partner_names',
             'ctc_firstname' => 'ctc.ctc_firstname',
             'ctc_lastname'  => 'ctc.ctc_lastname',
             'ctc_email'     => 'ctc.ctc_email',
@@ -65,7 +75,7 @@ class ApiContactController extends Controller
 
         $this->applyGridSort($query, $request, [
             'id'            => 'ctc.ctc_id',
-            'ptr_name'      => 'ptr.ptr_name',
+            'ptr_name'      => 'prt.partner_names',
             'ctc_firstname' => 'ctc.ctc_firstname',
             'ctc_lastname'  => 'ctc.ctc_lastname',
             'ctc_email'     => 'ctc.ctc_email',
@@ -75,6 +85,241 @@ class ApiContactController extends Controller
 
         $currentSettings = [
             'sort_by'    => $request->input('sort_by', 'ctc_firstname'),
+            'sort_order' => strtoupper($request->input('sort_order', 'ASC')),
+            'filters'    => $request->input('filters', []),
+            'page_size'  => (int) $request->input('limit', 50),
+        ];
+
+        $this->saveGridSettings($gridKey, $currentSettings);
+
+        return response()->json([
+            'data'         => $query->get(),
+            'total'        => $total,
+            'gridSettings' => $currentSettings,
+        ]);
+    }
+
+    public function prospectContacts(Request $request)
+    {
+        $gridKey = 'prospect-contacts';
+
+        if (!$request->has('sort_by')) {
+            $saved = $this->loadGridSettings($gridKey);
+            if ($saved) {
+                $merge = [];
+                if (!empty($saved['sort_by']))    $merge['sort_by']    = $saved['sort_by'];
+                if (!empty($saved['sort_order'])) $merge['sort_order'] = $saved['sort_order'];
+                if (!empty($saved['filters']))    $merge['filters']    = $saved['filters'];
+                if (!empty($saved['page_size']))  $merge['limit']      = $saved['page_size'];
+                $request->merge($merge);
+            }
+        }
+
+        // Sous-requête : noms des sociétés prospects liées au contact (many-to-many)
+        $showArchived = $request->boolean('archived', false);
+        $prospectPartnerSubQuery = DB::table('contact_partner_ctp as ctp')
+            ->join('partner_ptr as ptr', 'ctp.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->where('ptr.ptr_is_prospect', 1)
+            ->where('ptr.ptr_is_prospect_archived', $showArchived ? 1 : 0)
+            ->select(
+                'ctp.fk_ctc_id',
+                DB::raw('GROUP_CONCAT(DISTINCT ptr.ptr_name ORDER BY ptr.ptr_name SEPARATOR \', \') AS ptr_name')
+            )
+            ->groupBy('ctp.fk_ctc_id');
+
+        // INNER JOIN : seuls les contacts liés à au moins une société prospect
+        $query = ContactModel::from('contact_ctc as ctc')
+            ->joinSub($prospectPartnerSubQuery, 'prt', function ($join) {
+                $join->on('ctc.ctc_id', '=', 'prt.fk_ctc_id');
+            })
+            ->select([
+                'ctc.ctc_id as id',
+                'prt.ptr_name',
+                'ctc.ctc_firstname',
+                'ctc.ctc_lastname',
+                'ctc.ctc_email',
+                'ctc.ctc_phone',
+                'ctc.ctc_mobile',
+                'ctc.ctc_job_title',
+            ]);
+
+        $this->applyGridFilters($query, $request, [
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ]);
+
+        $total = $query->count();
+
+        $this->applyGridSort($query, $request, [
+            'id'            => 'ctc.ctc_id',
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ], 'ctc_lastname', 'ASC');
+
+        $this->applyGridPagination($query, $request, 50);
+
+        $currentSettings = [
+            'sort_by'    => $request->input('sort_by', 'ctc_lastname'),
+            'sort_order' => strtoupper($request->input('sort_order', 'ASC')),
+            'filters'    => $request->input('filters', []),
+            'page_size'  => (int) $request->input('limit', 50),
+        ];
+
+        $this->saveGridSettings($gridKey, $currentSettings);
+
+        return response()->json([
+            'data'         => $query->get(),
+            'total'        => $total,
+            'gridSettings' => $currentSettings,
+        ]);
+    }
+
+    public function supplierContacts(Request $request)
+    {
+        $gridKey = 'supplier-contacts';
+
+        if (!$request->has('sort_by')) {
+            $saved = $this->loadGridSettings($gridKey);
+            if ($saved) {
+                $merge = [];
+                if (!empty($saved['sort_by']))    $merge['sort_by']    = $saved['sort_by'];
+                if (!empty($saved['sort_order'])) $merge['sort_order'] = $saved['sort_order'];
+                if (!empty($saved['filters']))    $merge['filters']    = $saved['filters'];
+                if (!empty($saved['page_size']))  $merge['limit']      = $saved['page_size'];
+                $request->merge($merge);
+            }
+        }
+
+        $supplierPartnerSubQuery = DB::table('contact_partner_ctp as ctp')
+            ->join('partner_ptr as ptr', 'ctp.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->where('ptr.ptr_is_supplier', 1)
+            ->select(
+                'ctp.fk_ctc_id',
+                DB::raw('GROUP_CONCAT(DISTINCT ptr.ptr_name ORDER BY ptr.ptr_name SEPARATOR \', \') AS ptr_name')
+            )
+            ->groupBy('ctp.fk_ctc_id');
+
+        $query = ContactModel::from('contact_ctc as ctc')
+            ->joinSub($supplierPartnerSubQuery, 'prt', function ($join) {
+                $join->on('ctc.ctc_id', '=', 'prt.fk_ctc_id');
+            })
+            ->select([
+                'ctc.ctc_id as id',
+                'prt.ptr_name',
+                'ctc.ctc_firstname',
+                'ctc.ctc_lastname',
+                'ctc.ctc_email',
+                'ctc.ctc_phone',
+                'ctc.ctc_mobile',
+                'ctc.ctc_job_title',
+            ]);
+
+        $this->applyGridFilters($query, $request, [
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ]);
+
+        $total = $query->count();
+
+        $this->applyGridSort($query, $request, [
+            'id'            => 'ctc.ctc_id',
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ], 'ctc_lastname', 'ASC');
+
+        $this->applyGridPagination($query, $request, 50);
+
+        $currentSettings = [
+            'sort_by'    => $request->input('sort_by', 'ctc_lastname'),
+            'sort_order' => strtoupper($request->input('sort_order', 'ASC')),
+            'filters'    => $request->input('filters', []),
+            'page_size'  => (int) $request->input('limit', 50),
+        ];
+
+        $this->saveGridSettings($gridKey, $currentSettings);
+
+        return response()->json([
+            'data'         => $query->get(),
+            'total'        => $total,
+            'gridSettings' => $currentSettings,
+        ]);
+    }
+
+    public function customerContacts(Request $request)
+    {
+        $gridKey = 'customer-contacts';
+
+        if (!$request->has('sort_by')) {
+            $saved = $this->loadGridSettings($gridKey);
+            if ($saved) {
+                $merge = [];
+                if (!empty($saved['sort_by']))    $merge['sort_by']    = $saved['sort_by'];
+                if (!empty($saved['sort_order'])) $merge['sort_order'] = $saved['sort_order'];
+                if (!empty($saved['filters']))    $merge['filters']    = $saved['filters'];
+                if (!empty($saved['page_size']))  $merge['limit']      = $saved['page_size'];
+                $request->merge($merge);
+            }
+        }
+
+        $customerPartnerSubQuery = DB::table('contact_partner_ctp as ctp')
+            ->join('partner_ptr as ptr', 'ctp.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->where('ptr.ptr_is_customer', 1)
+            ->select(
+                'ctp.fk_ctc_id',
+                DB::raw('GROUP_CONCAT(DISTINCT ptr.ptr_name ORDER BY ptr.ptr_name SEPARATOR \', \') AS ptr_name')
+            )
+            ->groupBy('ctp.fk_ctc_id');
+
+        $query = ContactModel::from('contact_ctc as ctc')
+            ->joinSub($customerPartnerSubQuery, 'prt', function ($join) {
+                $join->on('ctc.ctc_id', '=', 'prt.fk_ctc_id');
+            })
+            ->select([
+                'ctc.ctc_id as id',
+                'prt.ptr_name',
+                'ctc.ctc_firstname',
+                'ctc.ctc_lastname',
+                'ctc.ctc_email',
+                'ctc.ctc_phone',
+                'ctc.ctc_mobile',
+                'ctc.ctc_job_title',
+            ]);
+
+        $this->applyGridFilters($query, $request, [
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ]);
+
+        $total = $query->count();
+
+        $this->applyGridSort($query, $request, [
+            'id'            => 'ctc.ctc_id',
+            'ptr_name'      => 'prt.ptr_name',
+            'ctc_firstname' => 'ctc.ctc_firstname',
+            'ctc_lastname'  => 'ctc.ctc_lastname',
+            'ctc_email'     => 'ctc.ctc_email',
+            'ctc_job_title' => 'ctc.ctc_job_title',
+        ], 'ctc_lastname', 'ASC');
+
+        $this->applyGridPagination($query, $request, 50);
+
+        $currentSettings = [
+            'sort_by'    => $request->input('sort_by', 'ctc_lastname'),
             'sort_order' => strtoupper($request->input('sort_order', 'ASC')),
             'filters'    => $request->input('filters', []),
             'page_size'  => (int) $request->input('limit', 50),
@@ -264,6 +509,68 @@ class ApiContactController extends Controller
             'message' => 'Updated successfully',
             'data' => ['ctc_id' => $contact->ctc_id],
         ]);
+    }
+
+    /**
+     * Vérifier les doublons avant création d'un contact (par nom ou email)
+     */
+    public function checkDuplicate(Request $request)
+    {
+        $firstname = trim($request->input('ctc_firstname', ''));
+        $lastname  = trim($request->input('ctc_lastname', ''));
+        $email     = trim($request->input('ctc_email', ''));
+        $excludeId = $request->input('ctc_id');
+
+        if (!$firstname && !$lastname && !$email) {
+            return response()->json(['duplicates' => []]);
+        }
+
+        $query = ContactModel::from('contact_ctc as ctc')
+            ->leftJoin('partner_ptr as ptr', 'ctc.fk_ptr_id', '=', 'ptr.ptr_id')
+            ->select([
+                'ctc.ctc_id',
+                'ctc.ctc_firstname',
+                'ctc.ctc_lastname',
+                'ctc.ctc_email',
+                'ctc.ctc_job_title',
+                'ctc.ctc_phone',
+                'ctc.ctc_mobile',
+                'ptr.ptr_name as partner_name',
+            ])
+            ->where(function ($q) use ($firstname, $lastname, $email) {
+                if ($email) {
+                    $q->orWhere('ctc.ctc_email', $email);
+                }
+                if ($firstname && $lastname) {
+                    $q->orWhere(function ($q2) use ($firstname, $lastname) {
+                        $q2->whereRaw('LOWER(ctc.ctc_firstname) = ?', [strtolower($firstname)])
+                           ->whereRaw('LOWER(ctc.ctc_lastname) = ?', [strtolower($lastname)]);
+                    });
+                }
+            });
+
+        if ($excludeId) {
+            $query->where('ctc.ctc_id', '!=', (int) $excludeId);
+        }
+
+        $duplicates = $query->limit(10)->get();
+
+        foreach ($duplicates as $dup) {
+            $partnerRows = DB::table('contact_partner_ctp as ctp')
+                ->join('partner_ptr as ptr', 'ctp.fk_ptr_id', '=', 'ptr.ptr_id')
+                ->where('ctp.fk_ctc_id', $dup->ctc_id)
+                ->select('ptr.ptr_id as id', 'ptr.ptr_name as name')
+                ->get();
+            $dup->partner_ids   = $partnerRows->pluck('id')->toArray();
+            $dup->partner_names = $partnerRows->pluck('name')->toArray();
+        }
+
+        $newPartnerIds   = array_filter(array_map('intval', (array) $request->input('partner_ids', [])));
+        $newPartnerNames = $newPartnerIds
+            ? DB::table('partner_ptr')->whereIn('ptr_id', $newPartnerIds)->pluck('ptr_name')->toArray()
+            : [];
+
+        return response()->json(['duplicates' => $duplicates, 'new_partner_names' => $newPartnerNames]);
     }
 
     /**

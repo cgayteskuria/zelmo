@@ -272,6 +272,19 @@ class EmailService
     }
 
     /**
+     * Crée et retourne un client IMAP connecté (rafraîchit le token OAuth2 si nécessaire)
+     */
+    public function createImapClient(MessageEmailAccountModel $config): \Webklex\PHPIMAP\Client
+    {
+        $this->refreshOAuthTokenIfNeeded($config);
+        $imapConfig = $this->buildImapConfig($config);
+        $cm = new ClientManager();
+        $client = $cm->make($imapConfig);
+        $client->connect();
+        return $client;
+    }
+
+    /**
      * Test la connexion IMAP
      *
      * @param MessageEmailAccountModel $config

@@ -64,7 +64,9 @@ const getFileIcon = (fileName) => {
 export default function EmailDialog({ open, onClose, emailContext = "company", templateType = null, documentId = null, templateData = {},
   onSendSuccess, partnerId = null,
   defaultRecipientId = null,
-  initialAttachments = {}
+  initialAttachments = {},
+  entityType = null,
+  entityId = null,
 }) {
   const { message } = App.useApp();
   const fileInputRef = useRef(null);
@@ -229,7 +231,7 @@ export default function EmailDialog({ open, onClose, emailContext = "company", t
 
   // Envoi de l'email
   const handleSend = useCallback(async () => {
-    // Validations
+    // Validations    
     if (!emailAccountId) {
       message.error("Veuillez selectionner un compte email expediteur.");
       return;
@@ -297,11 +299,14 @@ export default function EmailDialog({ open, onClose, emailContext = "company", t
         formData.append("document_ids", documentIds.join(","));
       }
 
+      if (entityType) formData.append("entity_type", entityType);
+      if (entityId) formData.append("entity_id", entityId);
+
       const result = await emailApi.send(formData);
 
       if (result.success) {
         message.success("Email envoye avec succes");
-        onSendSuccess?.();
+        onSendSuccess?.(validTo);
         onClose();
       } else {
         message.error(result.message || "Erreur lors de l'envoi");
@@ -395,9 +400,8 @@ export default function EmailDialog({ open, onClose, emailContext = "company", t
               disabled={sending}
               value={emailAccountId}
               onChange={setEmailAccountId}
-              onOptionsLoaded={(count) => setEmailAccountsCount(count)}
+              onOptionsLoaded={(options) => setEmailAccountsCount(options.length)}
               selectDefault
-              onDefaultSelected={setEmailAccountId}
               loadInitially
               style={{ flex: 1 }}
             />

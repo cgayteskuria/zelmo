@@ -1,6 +1,6 @@
 import { useRef, useMemo, useState } from "react";
 import { Button, Tooltip } from "antd";
-import { PlusOutlined, FunnelPlotOutlined } from "@ant-design/icons";
+import { PlusOutlined, FunnelPlotOutlined, InboxOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import ServerTable from "../../components/table";
 import { formatCurrency } from "../../utils/formatters";
@@ -11,7 +11,7 @@ import { useRowHandler } from "../../hooks/useRowHandler";
 
 import CanAccess from "../../components/common/CanAccess";
 
-import { partnersApi, customersApi, suppliersApi, prospectsApi } from "../../services/api";
+import { partnersApi, customersApi, suppliersApi, prospectsApi, prospectsArchivedApi } from "../../services/api";
 import Partner from "./Partner";
 import Opportunity from "./Opportunity";
 
@@ -36,6 +36,9 @@ export default function Partners() {
     // Drawer pour les opportunités (prospects uniquement)
     const [oppDrawerOpen, setOppDrawerOpen] = useState(false);
     const [oppDefaultValues, setOppDefaultValues] = useState({});
+
+    // Basculer entre prospects actifs et archivés
+    const [showArchivedProspects, setShowArchivedProspects] = useState(false);
 
     const isProspectPage = location.pathname.startsWith('/prospects');
     const isCustomerPage = location.pathname.startsWith('/customers');
@@ -72,9 +75,9 @@ export default function Partners() {
         }
         if (location.pathname.startsWith('/prospects')) {
             return {
-                title: "Prospects",
+                title: showArchivedProspects ? "Prospects archivés" : "Prospects",
                 buttonLabel: "Ajouter un prospect",
-                fetchData: prospectsApi.list,
+                fetchData: showArchivedProspects ? prospectsArchivedApi.list : prospectsApi.list,
                 basePath: "/prospects",
                 permissionPrefix: "prospects"
             };
@@ -87,7 +90,7 @@ export default function Partners() {
             basePath: "/partners",
             permissionPrefix: "partners"
         };
-    }, [location.pathname]);
+    }, [location.pathname, showArchivedProspects]);
 
     const permissions = useMemo(() => ({
         create: `${pageConfig.permissionPrefix}.create`,
@@ -108,7 +111,7 @@ export default function Partners() {
             { key: "ptr_name", title: "Nom", filterType: "text", ellipsis: true, render: (v) => <strong>{v}</strong> },
             { key: "ptr_city", title: "Ville", width: 150, filterType: "text", ellipsis: true, },
             { key: "ptr_phone", title: "Téléphone", width: 140, filterType: "text", },
-            { key: "ptr_email", title: "Email", width: 200, filterType: "text", ellipsis: true, },
+          //  { key: "ptr_email", title: "Email", width: 200, filterType: "text", ellipsis: true, },
             { key: "seller_name", title: "Commercial", width: 160, filterType: "text", ellipsis: true, },
 
         ];
@@ -169,20 +172,32 @@ export default function Partners() {
         <PageContainer
             title={pageConfig.title}
             actions={
-                <CanAccess permission={permissions.create}>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={openForCreate}
-                        size="large"
-                    >
-                        {pageConfig.buttonLabel}
-                    </Button>
-                </CanAccess>
+                <>
+                    {isProspectPage && (
+                        <Button
+                            icon={showArchivedProspects ? <UnorderedListOutlined /> : <InboxOutlined />}
+                            onClick={() => setShowArchivedProspects(v => !v)}
+                            size="large"
+                            style={{ marginRight: 8 }}
+                        >
+                            {showArchivedProspects ? "Prospects actifs" : "Prospects archivés"}
+                        </Button>
+                    )}
+                    <CanAccess permission={permissions.create}>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={openForCreate}
+                            size="large"
+                        >
+                            {pageConfig.buttonLabel}
+                        </Button>
+                    </CanAccess>
+                </>
             }
         >
             <ServerTable
-                key={location.pathname}
+                key={location.pathname + (showArchivedProspects ? '-archived' : '')}
                 ref={gridRef}
                 fetchFn={pageConfig.fetchData}
                 columns={columns}
@@ -209,6 +224,7 @@ export default function Partners() {
                     defaultValues={oppDefaultValues}
                 />
             )}
+
         </PageContainer>
     );
 }

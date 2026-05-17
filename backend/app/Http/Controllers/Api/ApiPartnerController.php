@@ -102,6 +102,10 @@ class ApiPartnerController extends Controller
             $query->where('ptr_is_prospect', 1);
         }
 
+        if ($request->has('ptr_is_prospect_archived')) {
+            $query->where('ptr_is_prospect_archived', (int) $request->input('ptr_is_prospect_archived'));
+        }
+
         // 🔐 Filtre selon les droits de l'utilisateur
         $this->applyPermissionScope($query);
 
@@ -166,7 +170,47 @@ class ApiPartnerController extends Controller
     public function indexProspects(Request $request)
     {
         $request->merge(['ptr_is_prospect' => '1']);
+        $archived = $request->boolean('archived', false);
+        $request->merge(['ptr_is_prospect_archived' => $archived ? '1' : '0']);
         return $this->index($request, 'prospects');
+    }
+
+    /**
+     * Archive un prospect (le masque de la liste principale).
+     * Conditions : toutes les opportunités doivent être gagnées ou perdues,
+     * et toutes les activités doivent être marquées comme effectuées.
+     */
+    public function archiveProspect(Request $request, $id)
+    {
+        $partner = PartnerModel::findOrFail($id);
+
+        $openOpps = DB::table('prospect_opportunity_opp')
+            ->join('prospect_pipeline_stage_pps', 'prospect_opportunity_opp.fk_pps_id', '=', 'prospect_pipeline_stage_pps.pps_id')
+            ->where('prospect_opportunity_opp.fk_ptr_id', $id)
+            ->where('prospect_pipeline_stage_pps.pps_is_won', 0)
+            ->where('prospect_pipeline_stage_pps.pps_is_lost', 0)
+            ->count();
+
+        if ($openOpps > 0) {
+            return response()->json([
+                'message' => "Impossible d'archiver : {$openOpps} opportunité(s) encore en cours.",
+            ], 422);
+        }
+
+        $pendingActivities = DB::table('prospect_activity_pac')
+            ->where('fk_ptr_id', $id)
+            ->where('pac_is_done', 0)
+            ->count();
+
+        if ($pendingActivities > 0) {
+            return response()->json([
+                'message' => "Impossible d'archiver : {$pendingActivities} activité(s) non terminée(s).",
+            ], 422);
+        }
+
+        $partner->update(['ptr_is_prospect_archived' => 1]);
+
+        return response()->json(['message' => 'Prospect archivé avec succès.']);
     }
 
     /**
@@ -365,7 +409,6 @@ class ApiPartnerController extends Controller
             'ptr_account_auxiliary_supplier'        => 'nullable|string|max:8|unique:partner_ptr,ptr_account_auxiliary_supplier',
             'ptr_customer_note'                     => 'nullable|string|max:255',
             'fk_tap_id'                             => 'nullable|integer|exists:account_tax_position_tap,tap_id',
-            'ptr_prospect_description'              => 'nullable|string',
             'ptr_linkedin_url'                      => 'nullable|string|max:2048',
             'ptr_pappers_url'                       => 'nullable|string|max:2048',
             'ptr_headcount'                          => 'nullable|string|max:100',
@@ -428,7 +471,7 @@ class ApiPartnerController extends Controller
             ], 422);
         }
 
-        $this->authorizePartnerWrite($types, 'edit');
+        $this->authorizePartnerWrite($types, 'create');
 
         $partner = PartnerModel::create([
             'ptr_name'                              => $request->ptr_name,
@@ -458,7 +501,6 @@ class ApiPartnerController extends Controller
             'ptr_account_auxiliary_supplier'        => $request->ptr_account_auxiliary_supplier,
             'ptr_customer_note'                     => $request->ptr_customer_note,
             'fk_tap_id'                             => $request->fk_tap_id,
-            'ptr_prospect_description'              => $request->ptr_prospect_description,
             'ptr_linkedin_url'                      => $request->ptr_linkedin_url,
             'ptr_pappers_url'                       => $request->ptr_pappers_url,
             'ptr_headcount'                          => $request->ptr_headcount,
@@ -493,8 +535,9 @@ class ApiPartnerController extends Controller
             'ptr_is_customer'                       => 'nullable|boolean',
             'ptr_is_supplier'                       => 'nullable|boolean',
             'ptr_is_prospect'                       => 'nullable|boolean',
+            'ptr_is_prospect_archived'              => 'nullable|boolean',
             'ptr_notes'                             => 'nullable|string|max:255',
-            'ptr_vat_number'                        => 'nullable|string|max:20',            
+            'ptr_vat_number'                        => 'nullable|string|max:20',
             'ptr_siret'                             => 'nullable|string|max:14|regex:/^\d{14}$/',
             'ptr_country_code'                      => 'nullable|string|size:2',
             'usr_id_referenttech'                   => 'nullable|integer|exists:user_usr,usr_id',
@@ -508,7 +551,6 @@ class ApiPartnerController extends Controller
             'ptr_account_auxiliary_supplier'        => 'nullable|string|max:8|unique:partner_ptr,ptr_account_auxiliary_supplier,' . $id . ',ptr_id',
             'ptr_customer_note'                     => 'nullable|string|max:255',
             'fk_tap_id'                             => 'nullable|integer|exists:account_tax_position_tap,tap_id',
-            'ptr_prospect_description'              => 'nullable|string',
             'ptr_linkedin_url'                      => 'nullable|string|max:2048',
             'ptr_pappers_url'                       => 'nullable|string|max:2048',
             'ptr_headcount'                          => 'nullable|string|max:100',
@@ -601,7 +643,6 @@ class ApiPartnerController extends Controller
             'ptr_account_auxiliary_supplier'        => $request->input('ptr_account_auxiliary_supplier', $partner->ptr_account_auxiliary_supplier),
             'ptr_customer_note'                     => $request->input('ptr_customer_note', $partner->ptr_customer_note),
             'fk_tap_id'                             => $request->input('fk_tap_id', $partner->fk_tap_id),
-            'ptr_prospect_description'              => $request->input('ptr_prospect_description', $partner->ptr_prospect_description),
             'ptr_linkedin_url'                      => $request->input('ptr_linkedin_url', $partner->ptr_linkedin_url),
             'ptr_pappers_url'                       => $request->input('ptr_pappers_url', $partner->ptr_pappers_url),
             'ptr_headcount'                          => $request->input('ptr_headcount', $partner->ptr_headcount),

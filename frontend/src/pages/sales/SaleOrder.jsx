@@ -1,22 +1,26 @@
 import { useEffect, useState, useMemo, useCallback, lazy, Suspense, useRef } from "react";
 import { Form, Input, Button, Row, Col, DatePicker, Popconfirm, Tabs, Space, Spin, Card, Modal, Alert } from "antd";
 import { message } from '../../utils/antdStatic';
-import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, CheckCircleOutlined, UnlockOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SaveOutlined, CopyOutlined, ArrowLeftOutlined, MailOutlined, PrinterOutlined, LockOutlined, CheckCircleOutlined, UnlockOutlined, LeftOutlined, RightOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import { useListNavigation } from "../../hooks/useListNavigation";
 import dayjs from "dayjs";
 import PageContainer from "../../components/common/PageContainer";
-import { saleOrdersGenericApi, partnersApi } from "../../services/api";
+import { saleOrdersGenericApi, partnersApi, saleOrderConfApi } from "../../services/api";
 import { getUser, can } from "../../services/auth";
 import CommitmentDurationSelect from "../../components/select/CommitmentDurationSelect.jsx";
+import NoticeDurationSelect from "../../components/select/NoticeDurationSelect.jsx";
+import RenewDurationSelect from "../../components/select/RenewDurationSelect.jsx";
+import InvoicingDurationSelect from "../../components/select/InvoicingDurationSelect.jsx";
 import ContactSelect from "../../components/select/ContactSelect";
 import SellerSelect from "../../components/select/SellerSelect";
 import PartnerSelect from "../../components/select/PartnerSelect";
 import PaymentModeSelect from "../../components/select/PaymentModeSelect";
 import PaymentConditionSelect from "../../components/select/PaymentConditionSelect";
 import { useEntityForm } from "../../hooks/useEntityForm";
-import { formatStatus, formatInvoicingState, formatDeliveryState, getModuleConfig, ORDER_STATUS, ORDER_DELIVERY_STATUS, ORDER_INVOICING_STATUS } from "../../configs/SaleOrderConfig";
+import { formatStatus, formatInvoicingState, formatDeliveryState, getModuleConfig, ORDER_STATUS, ORDER_DELIVERY_STATUS, ORDER_INVOICING_STATUS, HISTORY_FIELD_CONFIG } from "../../configs/SaleOrderConfig";
 import { handleBizPrint } from "../../utils/BizDocumentUtils.js";
+import { prepareSignatureToken, storeSignerEmail } from "../../services/apiSignature";
 import { createDateValidator } from '../../utils/writingPeriod';
 import BizDocumentLinesTable from "../../components/bizdocument/BizDocumentLinesTable";
 import BizDocumentMarginTable, { calculateMargins } from "../../components/bizdocument/BizDocumentMarginTable";
@@ -25,7 +29,9 @@ import WarehouseSelect from "../../components/select/WarehouseSelect";
 // Import lazy des composants lourds
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 import BizLineSelectionModal from '../../components/bizdocument/BizLineSelectionModal';
+import DeliveryActivationModal from '../../components/bizdocument/DeliveryActivationModal';
 const EmailDialog = lazy(() => import('../../components/bizdocument/EmailDialog'));
 
 // Composant de chargement pour les onglets
@@ -73,9 +79,13 @@ export default function SaleOrder() {
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [emailAttachments, setEmailAttachments] = useState([]);
+    const [isSignatureEmailMode, setIsSignatureEmailMode] = useState(false);
+    const [signatureTemplateData, setSignatureTemplateData] = useState({});
 
     const [linkedObjectsRefreshKey, setLinkedObjectsRefreshKey] = useState(0);
+    const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
     const [isLockedByDelivery, setIsLockedByDelivery] = useState(false);
+    const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
     const [ordInvoicingState, setOrdInvoicingState] = useState(0);
     const [ordDeliveryState, setOrdDeliveryState] = useState(0);
@@ -90,10 +100,16 @@ export default function SaleOrder() {
     });
 
     const [marginData, setMarginData] = useState([]);
+    const [saleConfig, setSaleConfig] = useState(null);
 
     const fkPtrId = Form.useWatch('fk_ptr_id', form);
     const fkDurId = Form.useWatch('fk_dur_id', form);
     const fkCtcId = Form.useWatch('fk_ctc_id', form);
+
+    const hasSubscriptionLines = useMemo(
+        () => orderLines.some(l => (l.isSubscription === true || l.isSubscription === 1) && l.lineType === 0),
+        [orderLines]
+    );
 
     const [pageLabel, setPageLabel] = useState();
     const [ordCancelReason, setOrdCancelReason] = useState('');
@@ -144,9 +160,9 @@ export default function SaleOrder() {
                 : data.ord_number;
             setPageLabel(label);
         }
-             // Toujours mettre à jour documentsCount, même si c'est 0
+        // Toujours mettre à jour documentsCount, même si c'est 0
         setDocumentsCount(data.documents_count ?? 0);
-        
+
         setOrdStatus(data.ord_status);
         setOrdBeingEdited(Boolean(data.ord_being_edited) ?? false);
         setOrdCancelReason(data.ord_cancel_reason || '');
@@ -171,6 +187,23 @@ export default function SaleOrder() {
         onDelete: onDeleteCallback,
         onDataLoaded: onDataLoadedCallback,
     });
+
+    // Date d'envoi de la demande de signature (si envoyée et pas encore signée)
+    const signSentAt = useMemo(() => {
+        if (!entity?.ord_validation_token || entity?.ord_sign_token_used_at) return null;
+        try {
+            const audit = JSON.parse(entity.ord_sign_audit || '{}');
+            const firstEvent = audit?.events?.[0];
+            if (firstEvent?.at) return dayjs(firstEvent.at).format('DD/MM/YYYY HH:mm');
+        } catch {
+            // ignore
+        }
+        // Fallback : recalculer depuis la date d'expiration - 30 jours
+        if (entity?.ord_sign_token_expires_at) {
+            return dayjs(entity.ord_sign_token_expires_at).subtract(30, 'day').format('DD/MM/YYYY HH:mm');
+        }
+        return null;
+    }, [entity]);
 
     // Fonction helper pour formater les dates des valeurs du formulaire
     const formatFormDates = useCallback((values) => ({
@@ -466,67 +499,15 @@ export default function SaleOrder() {
         }
     };
 
-    // Fonction wrapper pour générer avec toutes les lignes (cas engagement avec abonnement)
-    const handleGenerateAllLines = useCallback(async () => {
-        // Transformer toutes les lignes normales au format attendu par l'API
-        const formattedLines = orderLines
-            .filter(line => line.lineType === 0) // Uniquement les lignes normales (pas titres ni sous-totaux)
-            .map(line => ({
-                line_id: line.lineId,
-                qty: line.qty, // Quantité complète de la ligne
-                line_type: line.lineType
-            }));
+    const handleDeliveryModalClose = useCallback(() => {
+        setDeliveryModalOpen(false);
+    }, []);
 
-        if (formattedLines.length === 0) {
-            message.error('Aucune ligne à traiter');
-            return;
-        }
-
-        await handleGenerateInvoiceAndContract(formattedLines);
-    }, [orderLines, saleOrderId, handleGenerateInvoiceAndContract]);
-
-
-    const handleMarkAsFullyInvoiced = useCallback(() => {
-        Modal.confirm({
-            title: 'Confirmer l\'action',
-            content: 'Voulez-vous vraiment marquer cette commande comme totalement facturée ?',
-            okText: 'Confirmer',
-            cancelText: 'Annuler',
-            onOk: async () => {
-                try {
-                    await saleOrdersGenericApi.update(saleOrderId, {
-                        ord_invoicing_state: ORDER_INVOICING_STATUS.FULLY
-                    });
-                    message.success('Commande marquée comme facturée');
-                    await reload(false);
-                } catch (error) {
-                    console.error('Erreur lors de la mise à jour du statut:', error);
-                    message.error('Erreur lors de la mise à jour du statut');
-                }
-            }
-        });
-    }, [saleOrderId, reload]);
-
-    const handleMarkAsFullyDelivered = useCallback(() => {
-        Modal.confirm({
-            title: 'Confirmer l\'action',
-            content: 'Voulez-vous vraiment marquer cette commande comme totalement livrée ?',
-            okText: 'Confirmer',
-            cancelText: 'Annuler',
-            onOk: async () => {
-                try {
-                    await saleOrdersGenericApi.update(saleOrderId, {
-                        ord_delivery_state: ORDER_DELIVERY_STATUS.FULLY
-                    });
-                    message.success('Commande marquée comme livrée');
-                    await reload(false);
-                } catch (error) {
-                    console.error('Erreur lors de la mise à jour du statut:', error);
-                    message.error('Erreur lors de la mise à jour du statut');
-                }
-            }
-        });
-    }, [saleOrderId, reload]);
+    const handleDeliverySuccess = useCallback(async () => {
+        setDeliveryModalOpen(false);
+        await reload(false);
+        setLinkedObjectsRefreshKey(prev => prev + 1);
+    }, [reload]);
 
 
     // Auto-remplir le commercial avec l'utilisateur connecté lors de la création
@@ -538,6 +519,30 @@ export default function SaleOrder() {
             }
         }
     }, [saleOrderId, form]);
+
+    // Charger la config des ventes (sco_id=1) pour pré-remplir les valeurs par défaut
+    useEffect(() => {
+        saleOrderConfApi.get(1)
+            .then(res => setSaleConfig(res.data))
+            .catch(() => { });
+    }, []);
+
+    // Pré-remplir les champs abonnement depuis la config quand des lignes abonnement apparaissent
+    useEffect(() => {
+        if (!hasSubscriptionLines || !saleConfig) return;
+        const fields = [
+            { name: 'fk_dur_id',                  configKey: 'fk_dur_id_commitment' },
+            { name: 'fk_dur_id_renew',             configKey: 'fk_dur_id_renew' },
+            { name: 'fk_dur_id_notice',            configKey: 'fk_dur_id_notice' },
+            { name: 'fk_dur_id_invoicing',         configKey: 'fk_dur_id_invoicing' },
+            { name: 'fk_dur_id_payment_condition', configKey: 'fk_dur_id_payment_condition' },
+        ];
+        fields.forEach(({ name, configKey }) => {
+            if (!form.getFieldValue(name) && saleConfig[configKey]) {
+                form.setFieldValue(name, saleConfig[configKey]);
+            }
+        });
+    }, [hasSubscriptionLines, saleConfig, form]);
 
     // Gérer les erreurs de chargement (ID inexistant ou non autorisé)
     useEffect(() => {
@@ -566,15 +571,6 @@ export default function SaleOrder() {
         return Promise.resolve();
     }, [form, ordStatus]);
 
-    // Validation personnalisée pour le champ Engagement
-    const validateEngagement = useCallback((_, value) => {
-        const hasSubscription = orderLines.some(line => line.isSubscription === true || line.isSubscription === 1);
-        if (hasSubscription && !value) {
-            return Promise.reject(new Error('Le champ Engagement est requis car la commande contient au moins une ligne avec abonnement'));
-        }
-        return Promise.resolve();
-    }, [orderLines]);
-
 
     const handleDelete = useCallback(async () => {
         await remove();
@@ -584,7 +580,7 @@ export default function SaleOrder() {
         try {
             const result = await saleOrdersGenericApi.duplicate(saleOrderId);
             message.success("Enregistrement dupliquée avec succès");
-            
+
             const currentPath = window.location.pathname;
             const basePath = currentPath.includes('/sale-quotations') ? '/sale-quotations' : '/sale-orders';
             navigate(`${basePath}/${result.data.id}`);
@@ -630,14 +626,14 @@ export default function SaleOrder() {
     }, [ordStatus, ordBeingEdited, isLockedByDelivery]);
 
 
-    // Gérer l'affichage du bouton Supprimer
+    // Gérer l'affichage du bouton Supprimer (devis uniquement, jamais sur une commande confirmée)
     useEffect(() => {
-        if (ordInvoicingState === ORDER_INVOICING_STATUS.NOT_INVOICED && ordDeliveryState === ORDER_DELIVERY_STATUS.NOT_DELIVERED && ordStatus != ORDER_STATUS.REFUSED_QUOTE && ordStatus != ORDER_STATUS.CANCELLED) {
-            setShowDeleteBtn(true);
-        } else {
-            setShowDeleteBtn(false);
-        }
-    }, [ordInvoicingState, ordDeliveryState]);
+        const isQuotation = ordStatus < ORDER_STATUS.CONFIRMED;
+        const notInvoiced = ordInvoicingState === ORDER_INVOICING_STATUS.NOT_INVOICED;
+        const notDelivered = ordDeliveryState === ORDER_DELIVERY_STATUS.NOT_DELIVERED;
+        const notClosed = ordStatus !== ORDER_STATUS.REFUSED_QUOTE && ordStatus !== ORDER_STATUS.CANCELLED;
+        setShowDeleteBtn(isQuotation && notInvoiced && notDelivered && notClosed);
+    }, [ordStatus, ordInvoicingState, ordDeliveryState]);
 
 
     // Remplir automatiquement les champs lors du changement de client
@@ -725,6 +721,29 @@ export default function SaleOrder() {
         }
     }, [saleOrderId]);
 
+    const handleSignSend = useCallback(async () => {
+        if (!saleOrderId) {
+            message.error("Veuillez enregistrer le document avant de l'envoyer");
+            return;
+        }
+        try {
+            message.loading({ content: "Préparation de l'email...", key: "emailPrep" });
+
+            const signResponse = await prepareSignatureToken('sale-orders', saleOrderId);
+
+            setSignatureTemplateData({
+                signature_url: signResponse.data.signature_url,
+                sign_expires_at: signResponse.data.sign_expires_str,
+            });
+            message.destroy("emailPrep");
+            setIsSignatureEmailMode(true);
+            setEmailDialogOpen(true);
+        } catch (error) {
+            console.error("Erreur lors de la préparation de l'email:", error);
+            message.error({ content: error.message || "Erreur lors de la préparation de l'email", key: "emailPrep" });
+        }
+    }, [saleOrderId]);
+
     const handlePrint = useCallback(async () => {
         await handleBizPrint(
             saleOrdersGenericApi.printPdf,
@@ -769,13 +788,7 @@ export default function SaleOrder() {
                 onClick: () => handleChangeStatus(0),
                 type: 'secondary'
             });
-            buttons.push({
-                key: 'refuse',
-                label: "Annuler le devis",
-                icon: <DeleteOutlined />,
-                onClick: handleRefuseOrder,
-                type: 'secondary',
-            });
+            // "Annuler le devis" est rendu séparément, sur la même ligne que "Supprimer"
         } else if (ordStatus === ORDER_STATUS.CONFIRMED && ordBeingEdited === true) {
             buttons.push({
                 key: 'validate',
@@ -803,39 +816,25 @@ export default function SaleOrder() {
         }
 
         return buttons;
-    }, [ordStatus, ordBeingEdited, ordDeliveryState, ordInvoicingState, handleConfirmOrder, handleRefuseOrder, handleMarkAsFullyInvoiced, handleMarkAsFullyDelivered]);
+    }, [ordStatus, ordBeingEdited, ordDeliveryState, ordInvoicingState, handleConfirmOrder, handleRefuseOrder]);
 
 
     const actionButtons = useMemo(() => {
         const buttons = [];
 
-        // Boutons pour marquer manuellement comme facturé/livré (seulement si commande confirmée et non en édition)
-        if (ordStatus === ORDER_STATUS.CONFIRMED && ordBeingEdited === false) {
-            // Bouton "Indiquer comme Facturé" si pas encore totalement facturé
-            if ((ordInvoicingState === ORDER_INVOICING_STATUS.NOT_INVOICED || ordInvoicingState === ORDER_INVOICING_STATUS.PARTIALLY) && can('sale-orders.edit')) {
-                buttons.push({
-                    key: 'mark-invoiced',
-                    label: "Indiquer comme Facturé",
-                    // icon: <CheckCircleOutlined />,
-                    onClick: handleMarkAsFullyInvoiced,
-                    type: 'secondary'
-                });
-            }
-
-            // Bouton "Indiquer comme Livré" si pas encore totalement livré
-            if ((ordDeliveryState === ORDER_DELIVERY_STATUS.NOT_DELIVERED || ordDeliveryState === ORDER_DELIVERY_STATUS.PARTIALLY) && can('sale-orders.edit')) {
-                buttons.push({
-                    key: 'mark-delivered',
-                    label: "Indiquer comme Livré",
-                    // icon: <CheckCircleOutlined />,
-                    onClick: handleMarkAsFullyDelivered,
-                    type: 'secondary'
-                });
-            }
+        // Bouton Livrer / Réaliser / Activer (commande confirmée, non en édition)
+        if (ordStatus === ORDER_STATUS.CONFIRMED && ordBeingEdited === false && can('sale-orders.edit')) {
+            buttons.push({
+                key: 'deliver-activate',
+                label: "Livrer / Réaliser / Activer",
+                icon: <CheckCircleOutlined />,
+                onClick: () => setDeliveryModalOpen(true),
+                type: 'secondary'
+            });
         }
 
         return buttons;
-    }, [ordStatus, ordBeingEdited, ordDeliveryState, ordInvoicingState, handleConfirmOrder, handleRefuseOrder, handleMarkAsFullyInvoiced, handleMarkAsFullyDelivered]);
+    }, [ordStatus, ordBeingEdited]);
 
     /**
      * Construire les onglets
@@ -902,21 +901,60 @@ export default function SaleOrder() {
                                             />
                                         </Form.Item>
                                     </Col>
-                                    <Col span={8}>
-                                        <Form.Item
-                                            name="fk_dur_id"
-                                            label="Engagement"
-                                            rules={[
-                                                { validator: validateEngagement }
-                                            ]}
-                                        >
-                                            <CommitmentDurationSelect
-                                                loadInitially={!saleOrderId ? true : false}
-                                                initialData={entity?.commitment_duration}
-                                            />
-                                        </Form.Item>
-                                    </Col>
                                 </Row>
+                                {/* Champs abonnement/contrat — visibles uniquement si au moins une ligne d'abonnement */}
+                                {hasSubscriptionLines && (
+                                    <Row gutter={[16, 8]}>
+                                        <Col span={6}>
+                                            <Form.Item
+                                                name="fk_dur_id"
+                                                label="Engagement"
+                                                rules={[{ required: true, message: "Engagement requis" }]}
+                                            >
+                                                <CommitmentDurationSelect
+                                                    loadInitially={true}
+                                                    initialData={entity?.commitment_duration ?? saleConfig?.commitmentDuration}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item
+                                                name="fk_dur_id_renew"
+                                                label="Reconduction"
+                                                rules={[{ required: true, message: "Reconduction requise" }]}
+                                            >
+                                                <RenewDurationSelect
+                                                    loadInitially={true}
+                                                    initialData={entity?.renew_duration ?? saleConfig?.renewDuration}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item
+                                                name="fk_dur_id_notice"
+                                                label="Préavis"
+                                                rules={[{ required: true, message: "Préavis requis" }]}
+                                            >
+                                                <NoticeDurationSelect
+                                                    loadInitially={true}
+                                                    initialData={entity?.notice_duration ?? saleConfig?.noticeDuration}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={6}>
+                                            <Form.Item
+                                                name="fk_dur_id_invoicing"
+                                                label="Périodicité facturation"
+                                                rules={[{ required: true, message: "Périodicité de facturation requise" }]}
+                                            >
+                                                <InvoicingDurationSelect
+                                                    loadInitially={true}
+                                                    initialData={entity?.invoicing_duration ?? saleConfig?.invoicingDuration}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                )}
                                 <Row gutter={[16, 8]}>
                                     <Col span={8}>
                                         <Form.Item
@@ -1021,7 +1059,29 @@ export default function SaleOrder() {
                                     </Col>
                                 </Row>
                             </Col>
+
                             <Col span={6} style={{ paddingLeft: '8px', paddingRight: '8px' }} >
+                                {saleOrderId && ordStatus == ORDER_STATUS.FINALIZED && ordBeingEdited === false && (
+                                    <Row gutter={8}>
+                                        <Col span={24}>
+                                            <Button
+                                                type="primary"
+                                                size="default"
+                                                disabled={false}
+                                                icon={<SafetyCertificateOutlined />}
+                                                onClick={handleSignSend}
+                                                style={{
+                                                    width: '100%',
+                                                    margin: "4px",
+                                                    backgroundColor: signSentAt ? "#8c8c8c" : "#389e0d",
+                                                    borderColor: signSentAt ? "#8c8c8c" : "#389e0d",
+                                                }}
+                                            >
+                                                {signSentAt ? `Envoyé le ${signSentAt}` : 'Envoyer pour signature'}
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                )}
                                 <Row gutter={8}>
                                     {statusActionButtons.map((btn) => (
                                         <Col span={24} key={btn.key}>
@@ -1042,9 +1102,23 @@ export default function SaleOrder() {
                                 </Row>
                                 <Row gutter={8}>
                                     {!formDisabled && (
-                                        <Col span={24}>
+                                        <Col span={saleOrderId ? 12 : 24}>
                                             <Button color="green" variant="solid" size="default" icon={<SaveOutlined />} onClick={() => form.submit()} style={{ width: '100%', margin: "4px" }} >
                                                 Enregistrer
+                                            </Button>
+                                        </Col>
+                                    )}
+                                    {saleOrderId && (
+                                        <Col span={!formDisabled ? 12 : 24}>
+                                            <Button
+                                                type="secondary"
+                                                size="default"
+                                                icon={<CopyOutlined />}
+                                                onClick={handleDuplicate}
+                                                style={{ width: '100%', margin: "4px" }}
+                                                disabled={false}
+                                            >
+                                                Dupliquer
                                             </Button>
                                         </Col>
                                     )}
@@ -1064,22 +1138,25 @@ export default function SaleOrder() {
                                     </Row>
                                 )}
 
-                                {saleOrderId && (
+                                {saleOrderId && (showDeleteBtn || (ordStatus === ORDER_STATUS.FINALIZED && ordBeingEdited === false)) && (
                                     <Row gutter={8}>
-                                        <Col span={showDeleteBtn ? 12 : 24}>
-                                            <Button
-                                                type="secondary"
-                                                size="default"
-                                                icon={<CopyOutlined />}
-                                                onClick={handleDuplicate}
-                                                style={{ width: '100%', margin: "4px" }}
-                                                disabled={false}
-                                            >
-                                                Dupliquer
-                                            </Button>
-                                        </Col>
+                                        {ordStatus === ORDER_STATUS.FINALIZED && ordBeingEdited === false && (
+                                            <Col span={showDeleteBtn ? 12 : 24}>
+                                                <Button
+                                                    type="secondary"
+                                                    size="default"
+                                                    danger
+                                                    icon={<DeleteOutlined />}
+                                                    onClick={handleRefuseOrder}
+                                                    style={{ width: '100%', margin: "4px" }}
+                                                    disabled={false}
+                                                >
+                                                    Annuler le devis
+                                                </Button>
+                                            </Col>
+                                        )}
                                         {showDeleteBtn && (
-                                            <Col span={12}>
+                                            <Col span={ordStatus === ORDER_STATUS.FINALIZED && ordBeingEdited === false ? 12 : 24}>
                                                 <Popconfirm
                                                     title="Êtes-vous sûr de vouloir supprimer cette element ?"
                                                     description="Cette action est irréversible."
@@ -1088,7 +1165,6 @@ export default function SaleOrder() {
                                                     cancelText="Annuler"
                                                     okButtonProps={{ danger: true, disabled: false }}
                                                     cancelButtonProps={{ disabled: false }}
-
                                                 >
                                                     <Button
                                                         size="default"
@@ -1125,35 +1201,14 @@ export default function SaleOrder() {
                                 {saleOrderId && ordStatus === ORDER_STATUS.CONFIRMED && (ordInvoicingState === ORDER_INVOICING_STATUS.NOT_INVOICED || ordInvoicingState === ORDER_INVOICING_STATUS.PARTIALLY) && ordBeingEdited === false && can('invoices.create') && (
                                     <Row gutter={8}>
                                         <Col span={24}>
-                                            {!fkDurId ? (
-                                                // Si fk_dur_id est vide : bouton "Générer facture" qui ouvre le modal
-                                                <Button
-                                                    type="secondary"
-                                                    size="default"
-                                                    style={{ width: '100%', margin: "4px" }}
-                                                    disabled={false}
-                                                    onClick={handleOpenInvoiceModal}
-                                                >
-                                                    Générer la facture
-                                                </Button>
-                                            ) : (
-                                                // Si fk_dur_id n'est pas vide : bouton "Générer facture et contrat" avec confirmation
-                                                <Popconfirm
-                                                    title="Vous confirmez la création du contrat et de la facture de mise en service ?"
-                                                    description=""
-                                                    onConfirm={handleGenerateAllLines}
-                                                    okText="Oui, générer"
-                                                    cancelText="Annuler"
-                                                    okButtonProps={{ danger: false, disabled: false }}
-                                                    cancelButtonProps={{ disabled: false }}
-                                                >
-                                                    <Button type="secondary" size="default" style={{ width: '100%', margin: "4px" }}
-                                                        disabled={false}>
-                                                        Générer facture et contrat
-                                                    </Button>
-                                                </Popconfirm>
-                                            )}
-
+                                            <Button
+                                                type="secondary"
+                                                size="default"
+                                                style={{ width: '100%', margin: "4px" }}
+                                                onClick={handleOpenInvoiceModal}
+                                            >
+                                                Générer la facture
+                                            </Button>
                                         </Col>
                                     </Row>
                                 )}
@@ -1241,6 +1296,16 @@ export default function SaleOrder() {
                     </Suspense>
                 )
             });
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="sale_order" entityId={saleOrderId} refreshKey={historyRefreshKey} fieldConfig={HISTORY_FIELD_CONFIG} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
@@ -1262,7 +1327,7 @@ export default function SaleOrder() {
 
             title={
                 <Space>
-                    {pageLabel ? `${ordStatus <= 2 ? 'Devis' : 'Commande'} - ${pageLabel}`  : (saleOrderId ? "" : "Nouveau devis")}
+                    {pageLabel ? `${ordStatus <= 2 ? 'Devis' : 'Commande'} - ${pageLabel}` : (saleOrderId ? "" : "Nouveau devis")}
                 </Space>
             }
 
@@ -1366,14 +1431,23 @@ export default function SaleOrder() {
                 </Form.Item>
             </Modal>
 
-            {/* Modal de sélection des lignes à facturer */}
+            {/* Modal de sélection des lignes à facturer (hors abonnements — contrat créé à la signature) */}
             <BizLineSelectionModal
                 open={invoiceModalOpen}
                 title="Sélectionner les lignes à facturer"
                 okText="Générer la facture"
-                dataSource={orderLines}
+                dataSource={orderLines.filter(l => !l.isSubscription)}
                 onOk={handleGenerateInvoiceAndContract}
                 onCancel={() => setInvoiceModalOpen(false)}
+            />
+
+            {/* Modal livraison / réalisation / activation abonnements */}
+            <DeliveryActivationModal
+                open={deliveryModalOpen}
+                saleOrderId={saleOrderId}
+                orderLines={orderLines}
+                onClose={handleDeliveryModalClose}
+                onSuccess={handleDeliverySuccess}
             />
 
             {/* Dialog d'envoi d'email */}
@@ -1384,16 +1458,29 @@ export default function SaleOrder() {
                         onClose={() => {
                             setEmailDialogOpen(false);
                             setEmailAttachments([]);
+                            setIsSignatureEmailMode(false);
+                            setSignatureTemplateData({});
                         }}
                         emailContext="sale"
-                        templateType="sale"
+                        templateType={isSignatureEmailMode ? "sale_validation" : "sale"}
+                        templateData={isSignatureEmailMode ? signatureTemplateData : {}}
                         documentId={saleOrderId}
                         partnerId={fkPtrId}
                         defaultRecipientId={fkCtcId}
                         initialAttachments={emailAttachments}
+                        onSendSuccess={(sentTo) => {
+                            if (isSignatureEmailMode) {
+                                storeSignerEmail('sale-orders', saleOrderId, sentTo?.join(','));
+                                reload(false);
+                            }
+                            setHistoryRefreshKey(k => k + 1);
+                        }}
+                        entityType="sale_order"
+                        entityId={saleOrderId}
                     />
                 </Suspense>
             )}
+
         </PageContainer>
     );
 }

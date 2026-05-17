@@ -48,11 +48,17 @@ export const prospectActivitiesApi = {
     // Activités par tiers
     byPartner: (ptrId, params = {}) => api.get(`/prospect-activities/by-partner/${ptrId}`, { params }),
 
+    // Activités par contact
+    byContact: (ctcId) => api.get(`/prospect-activities/by-contact/${ctcId}`),
+
     // Prochaines activités (dashboard)
     upcoming: (params = {}) => api.get("/prospect-activities/upcoming", { params }),
 
     // Marquer comme terminée
     markAsDone: (id) => api.post(`/prospect-activities/${id}/mark-done`),
+
+    // Vue calendrier
+    calendar: (params = {}) => api.get("/prospect-activities/calendar", { params }),
 };
 
 

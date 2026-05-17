@@ -19,6 +19,11 @@ class ChargeModel extends BaseModel
     const CREATED_AT = 'che_created';
     const UPDATED_AT = 'che_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['che_number', 'che_label'];
+    }
+
     // Constantes de statut
     const STATUS_DRAFT = 0;
     const STATUS_FINALIZED = 1;

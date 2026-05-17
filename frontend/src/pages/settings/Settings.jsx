@@ -12,6 +12,7 @@ import AccountConfig from "../Accounting/AccountConfig";
 import TicketConfig from "./TicketConfig";
 import ExpenseConfig from "./ExpenseConfig";
 import TimeConfig from "./TimeConfig";
+import CrmConfig from "./CrmConfig";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -26,11 +27,12 @@ const DRAWER_MAP = {
     "ticket-config":       "ticket",
     "expense-config":      "expense",
     "time-config":         "time",
+    "crm-config":          "crm",
 };
 
 const DRAWER_DEFAULT = {
     company: false, purchase: false, sale: false, contract: false,
-    invoice: false, account: false, ticket: false, expense: false, time: false,
+    invoice: false, account: false, ticket: false, expense: false, time: false, crm: false,
 };
 
 export default function Settings() {
@@ -142,6 +144,12 @@ export default function Settings() {
                     open={drawers.time}
                     onClose={() => close("time")}
                     drawerSize="large"
+                />
+            )}
+            {drawers.crm && (
+                <CrmConfig
+                    open={drawers.crm}
+                    onClose={() => close("crm")}
                 />
             )}
         </PageContainer>

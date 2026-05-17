@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Button } from "antd";
+import { Button, Tag, Space } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import ServerTable from "../../components/table";
 import PageContainer from "../../components/common/PageContainer";
@@ -33,7 +33,14 @@ export default function Contacts() {
     const { handleRowClick } = useRowHandler(openForEdit);
 
     const columns = [
-        { key: "ptr_name", title: "Client", ellipsis: true, filterType: "text" },
+        {
+            key: "ptr_name",
+            title: "Client",
+            filterType: "text",
+            render: (value) => value
+                ? <Space size={4} wrap>{value.split(', ').map(name => <Tag key={name}>{name}</Tag>)}</Space>
+                : null,
+        },
         { key: "ctc_firstname", title: "Nom", ellipsis: true, filterType: "text" },
         { key: "ctc_lastname", title: "Prénom", ellipsis: true, filterType: "text" },
         { key: "ctc_email", title: "Email", ellipsis: true, filterType: "text" },

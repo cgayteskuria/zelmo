@@ -11,6 +11,7 @@ use App\Http\Resources\SaleOrderResource;
 use App\Services\SaleOrderService;
 use App\Services\InvoiceService;
 use App\Services\ContractService;
+use App\Services\ContractCreationService;
 use App\Services\Pdf\DocumentPdfService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -22,6 +23,7 @@ use App\Models\ContractModel;
 use App\Models\ContractLineModel;
 use App\Models\DurationsModel;
 use App\Models\DeliveryNoteModel;
+use App\Models\SaleConfigModel;
 use App\Traits\HasGridFilters;
 
 
@@ -99,11 +101,198 @@ class ApiSaleOrderController extends ApiBizDocumentController
         ];
     }
 
+    public function duplicate($id): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $original = SaleOrderModel::with('lines')->findOrFail($id);
+            $new = $original->replicate();
+
+            $saleConfig   = SaleConfigModel::first();
+            $validityDays = (int) ($saleConfig?->sco_qutote_default_validity ?? 30);
+
+            $new->ord_number           = null;
+            $new->ord_status           = 0;
+            $new->ord_being_edited     = false;
+            $new->ord_invoicing_state  = 0;
+            $new->ord_delivery_state   = 0;
+            $new->ord_date             = now();
+            $new->ord_valid            = now()->addDays($validityDays);
+
+            // Effacer tous les champs de signature
+            $new->ord_validation_token      = null;
+            $new->ord_validation_data       = null;
+            $new->ord_sign_token_expires_at = null;
+            $new->ord_sign_token_used_at    = null;
+            $new->ord_sign_pdf_hash         = null;
+            $new->ord_sign_pdf_path         = null;
+            $new->ord_sign_signer_email     = null;
+            $new->ord_sign_audit            = null;
+            $new->ord_sign_signature_image  = null;
+            $new->ord_sign_cgv_version      = null;
+
+            $new->save();
+
+            foreach ($original->lines as $line) {
+                $newLine = $line->replicate();
+                $newLine->fk_ord_id = $new->ord_id;
+                $newLine->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document dupliqué avec succès',
+                'data'    => ['id' => $new->ord_id, 'number' => $new->ord_number],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la duplication: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     /**
      * Méthodes spécifiques à SaleOrder
-     * (Les méthodes getLines, saveLine, deleteLine, updateLinesOrder, duplicate
-     * sont héritées de BaseDocumentController)
+     * (Les méthodes getLines, deleteLine, updateLinesOrder sont héritées de BaseDocumentController)
      */
+
+    /**
+     * Sauvegarde une ligne avec regroupement automatique titre/sous-total.
+     *
+     * Pour les nouvelles lignes normales (type 0) :
+     * - Si une section du même type (abonnement ou non) existe déjà, insère avant son sous-total.
+     * - Sinon, crée automatiquement un titre, la ligne, puis un sous-total.
+     */
+    public function saveLine($documentId, Request $request): JsonResponse
+    {
+        $lineType = (int) $request->input('lineType', 0);
+        $lineId   = $request->input('lineId');
+
+        if (!$lineId && $lineType === 0) {
+            return $this->saveNormalLineWithAutoGroup((int) $documentId, $request);
+        }
+
+        return parent::saveLine($documentId, $request);
+    }
+
+    private function saveNormalLineWithAutoGroup(int $documentId, Request $request): JsonResponse
+    {
+        $request->validate([
+            'fk_prt_id' => 'required|exists:product_prt,prt_id',
+        ], [
+            'fk_prt_id.required' => 'Le produit est obligatoire.',
+            'fk_prt_id.exists'   => 'Le produit sélectionné est invalide.',
+        ]);
+
+        $isSubscription = (bool) $request->input('isSubscription', false);
+
+        try {
+            DB::beginTransaction();
+
+            $existingLines = SaleOrderLineModel::where('fk_ord_id', $documentId)
+                ->orderBy('orl_order')
+                ->get();
+
+            $insertOrder = $this->findSectionInsertOrder($existingLines, $isSubscription);
+
+            if ($insertOrder !== null) {
+                // Décaler toutes les lignes à partir de cette position pour faire de la place
+                SaleOrderLineModel::where('fk_ord_id', $documentId)
+                    ->where('orl_order', '>=', $insertOrder)
+                    ->increment('orl_order');
+
+                $lineOrder = $insertOrder;
+            } else {
+                // Pas de section existante : créer titre + ligne + sous-total
+                $maxOrder = $existingLines->max('orl_order') ?? 0;
+
+                SaleOrderLineModel::create([
+                    'fk_ord_id'  => $documentId,
+                    'orl_type'   => SaleOrderLineModel::LINE_TYPE_SEPARATOR,
+                    'orl_order'  => $maxOrder + 1,
+                    'orl_prtlib' => $isSubscription ? 'Abonnements' : 'Prestations',
+                ]);
+
+                $lineOrder = $maxOrder + 2;
+
+                SaleOrderLineModel::create([
+                    'fk_ord_id' => $documentId,
+                    'orl_type'  => SaleOrderLineModel::LINE_TYPE_SUBTOTAL,
+                    'orl_order' => $maxOrder + 3,
+                ]);
+            }
+
+            $fieldMap = $this->getFieldMapping();
+            $lineData = $this->mapRequestToLineData($request, $documentId, $fieldMap);
+            $lineData['orl_order'] = $lineOrder;
+
+            $line = SaleOrderLineModel::create($lineData);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ligne ajoutée avec succès',
+                'line_id' => $line->orl_id,
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Retourne l'orl_order du sous-total de la section correspondant au type de ligne,
+     * ou null si aucune section adéquate n'existe.
+     *
+     * Une section est identifiée par : titre (type 1) → lignes produit (type 0) → sous-total (type 2).
+     * La section "abonnements" contient uniquement des lignes is_subscription=1.
+     * La section "prestations" contient uniquement des lignes is_subscription=0.
+     */
+    private function findSectionInsertOrder($lines, bool $isSubscription): ?int
+    {
+        $sections   = [];
+        $current    = null;
+
+        foreach ($lines as $line) {
+            if ($line->orl_type === SaleOrderLineModel::LINE_TYPE_SEPARATOR) {
+                $current = ['productLines' => [], 'subtotal' => null];
+            } elseif ($line->orl_type === SaleOrderLineModel::LINE_TYPE_SUBTOTAL && $current !== null) {
+                $current['subtotal'] = $line;
+                $sections[] = $current;
+                $current = null;
+            } elseif ($line->orl_type === SaleOrderLineModel::LINE_TYPE_NORMAL && $current !== null) {
+                $current['productLines'][] = $line;
+            }
+        }
+
+        foreach ($sections as $section) {
+            if (empty($section['productLines']) || $section['subtotal'] === null) {
+                continue;
+            }
+            $hasSub    = collect($section['productLines'])->contains(fn($l) => (bool) $l->orl_is_subscription);
+            $hasNonSub = collect($section['productLines'])->contains(fn($l) => !(bool) $l->orl_is_subscription);
+
+            $matches = $isSubscription
+                ? ($hasSub && !$hasNonSub)
+                : ($hasNonSub && !$hasSub);
+
+            if ($matches) {
+                return $section['subtotal']->orl_order;
+            }
+        }
+
+        return null;
+    }
 
     /**
      * Affiche la liste des commandes/devis
@@ -322,6 +511,9 @@ class ApiSaleOrderController extends ApiBizDocumentController
                 'paymentMode:pam_id,pam_label',
                 'taxPosition:tap_id,tap_label',
                 'commitmentDuration:dur_id,dur_label',
+                'renewDuration:dur_id,dur_label',
+                'noticeDuration:dur_id,dur_label',
+                'invoicingDuration:dur_id,dur_label',
                 'warehouse:whs_id,whs_label',
                 'contact' => function ($query) {
                     // Pour utiliser CONCAT, on doit utiliser selectRaw
@@ -369,6 +561,66 @@ class ApiSaleOrderController extends ApiBizDocumentController
      */
 
     /**
+     * Surcharge de destroy() : interdit la suppression d'une commande confirmée (ord_status >= STATUS_IN_PROGRESS).
+     */
+    public function destroy($id)
+    {
+        $saleOrder = SaleOrderModel::find($id);
+
+        if (!$saleOrder) {
+            return response()->json(['success' => false, 'message' => 'Commande introuvable.'], 404);
+        }
+
+        if ($saleOrder->ord_status >= SaleOrderModel::STATUS_IN_PROGRESS) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Une commande confirmée ne peut pas être supprimée.',
+            ], 403);
+        }
+
+        return parent::destroy($id);
+    }
+
+    /**
+     * Surcharge de update() pour valider les champs contrat quand la commande a des lignes d'abonnement.
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        $saleOrder = SaleOrderModel::find($id);
+
+        if (!$saleOrder) {
+            return response()->json(['success' => false, 'message' => 'Commande introuvable'], 404);
+        }
+
+        $hasSubscriptionLines = $saleOrder->lines()
+            ->where('orl_is_subscription', 1)
+            ->where('orl_type', 0)
+            ->exists();
+
+        if ($hasSubscriptionLines) {
+            $request->validate([
+                'fk_dur_id'          => 'required',
+                'fk_dur_id_renew'    => 'required',
+                'fk_dur_id_notice'   => 'required',
+                'fk_dur_id_invoicing' => 'required',
+            ], [
+                'fk_dur_id.required'           => 'Le champ Engagement est requis pour une commande avec abonnement.',
+                'fk_dur_id_renew.required'     => 'Le champ Reconduction est requis pour une commande avec abonnement.',
+                'fk_dur_id_notice.required'    => 'Le champ Préavis est requis pour une commande avec abonnement.',
+                'fk_dur_id_invoicing.required' => 'La Périodicité facturation est requise pour une commande avec abonnement.',
+            ]);
+        }
+
+        $saleOrder->updateSafe($request->all());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Updated successfully',
+            'data'    => ['ord_id' => $saleOrder->ord_id],
+        ]);
+    }
+
+    /**
      * Surcharge de buildLineSelectFields pour ajouter les quantités facturées et livrées
      *
      * @param array $fieldMap Mapping des champs
@@ -394,6 +646,16 @@ class ApiSaleOrderController extends ApiBizDocumentController
             WHERE dnl.fk_orl_id = line.' . $fieldMap['lineId'] . '
             AND dln.dln_status = ' . DeliveryNoteModel::STATUS_DRAFT . '
         ) AS qtyDelivered');
+
+        // Quantité livrée/réalisée directement sur la ligne (orl_delivered_qty)
+        $selectFields[] = 'line.orl_delivered_qty as deliveredQty';
+
+        // Statut de la ligne de contrat liée (col_status via fk_orl_id)
+        $selectFields[] = DB::raw('(SELECT col.col_status
+            FROM contract_line_col AS col
+            WHERE col.fk_orl_id = line.' . $fieldMap['lineId'] . '
+            LIMIT 1
+        ) AS contractLineStatus');
 
         return $selectFields;
     }
@@ -801,7 +1063,7 @@ class ApiSaleOrderController extends ApiBizDocumentController
                     'fk_ctc_id' => $saleOrder->fk_ctc_id,
                     'fk_pam_id' => $saleOrder->fk_pam_id,
                     'fk_dur_id_payment_condition' => $saleOrder->fk_dur_id_payment_condition,
-                    'fk_dur_id_commitment' => $saleOrder->fk_dur_id_commitment ?? null,
+                    'fk_dur_id_commitment' => $saleOrder->fk_dur_id ?? null,
                     'fk_dur_id_renew' => $saleOrder->fk_dur_id_renew ?? null,
                     'fk_dur_id_notice' => $saleOrder->fk_dur_id_notice ?? null,
                     'fk_dur_id_invoicing' => $saleOrder->fk_dur_id_invoicing ?? null,
@@ -952,5 +1214,80 @@ class ApiSaleOrderController extends ApiBizDocumentController
         }
 
         return $prevLines;
+    }
+
+    /**
+     * Marque des lignes de commande comme livrées/exécutées et/ou active des lignes d'abonnement.
+     *
+     * Payload: { lines: [{ orl_id: int, qty: float, action: 'deliver'|'execute'|'activate' }] }
+     */
+    public function deliverLines(Request $request, int $orderId): JsonResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $saleOrder = SaleOrderModel::with(['lines'])->findOrFail($orderId);
+
+            if ($saleOrder->ord_status !== SaleOrderModel::STATUS_IN_PROGRESS) {
+                return response()->json(['success' => false, 'message' => 'Seules les commandes confirmées peuvent être traitées.'], 400);
+            }
+
+            $linesPayload = $request->input('lines', []);
+            if (empty($linesPayload)) {
+                return response()->json(['success' => false, 'message' => 'Aucune ligne fournie.'], 400);
+            }
+
+            foreach ($linesPayload as $entry) {
+                $orlId  = (int) $entry['orl_id'];
+                $action = $entry['action'] ?? 'deliver';
+
+                $orderLine = $saleOrder->lines->firstWhere('orl_id', $orlId);
+                if (!$orderLine || $orderLine->orl_type !== 0) {
+                    continue;
+                }
+
+                if ($action === 'activate') {
+                    // Activer la ligne de contrat correspondante
+                    $contractLine = ContractLineModel::where('fk_orl_id', $orlId)->first();
+                    if ($contractLine) {
+                        $contractLine->col_status = ContractLineModel::STATUS_ACTIVE;
+                        $contractLine->save();
+                    }
+                } else {
+                    // Livraison / Exécution : ajouter à la quantité déjà livrée
+                    $toDeliver  = max(0, (float) ($entry['qty'] ?? 0));
+                    $existing   = (float) ($orderLine->orl_delivered_qty ?? 0);
+                    $ordered    = (float) $orderLine->orl_qty;
+                    $remaining  = max(0, $ordered - $existing);
+
+                    // Plafonner à la quantité restante
+                    $toDeliver = min($toDeliver, $remaining);
+
+                    if ($toDeliver > 0) {
+                        $orderLine->orl_delivered_qty = $existing + $toDeliver;
+                        $orderLine->save();
+                    }
+                }
+            }
+
+            // Recalculer ord_delivery_state depuis les lignes non-abonnement (après reload)
+            $saleOrder->load('lines');
+            $nonSubLines = $saleOrder->lines->where('orl_type', 0)->where('orl_is_subscription', 0);
+            if ($nonSubLines->isNotEmpty()) {
+                $allDelivered = $nonSubLines->every(fn($l) => (float) $l->orl_delivered_qty >= (float) $l->orl_qty);
+                $anyDelivered = $nonSubLines->some(fn($l) => (float) $l->orl_delivered_qty > 0);
+                $saleOrder->ord_delivery_state = $allDelivered
+                    ? SaleOrderModel::DELIVERY_FULLY
+                    : ($anyDelivered ? SaleOrderModel::DELIVERY_PARTIALLY : SaleOrderModel::DELIVERY_NOT_DELIVERED);
+                $saleOrder->save();
+            }
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Lignes mises à jour avec succès.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Erreur : ' . $e->getMessage()], 500);
+        }
     }
 }

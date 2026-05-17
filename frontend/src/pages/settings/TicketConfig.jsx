@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Drawer, Form, Input, Button, Row, Col, Spin, Space, Switch, Alert, Divider } from "antd";
+import { Drawer, Form, Input, Button, Row, Col, Spin, Space, Switch, Alert, Divider, Select } from "antd";
 import { message } from '../../utils/antdStatic';
 import { SaveOutlined, MailOutlined } from "@ant-design/icons";
 import { ticketConfigApi } from "../../services/api";
@@ -127,6 +127,7 @@ export default function TicketConfig({ open, onClose, onSubmit, drawerSize = "la
                     onFinish={handleFormSubmit}
                     initialValues={{
                         tco_send_acknowledgment: false,
+                        tco_email_collection_interval: 15,
                     }}
                 >
                     <Form.Item name="tco_id" hidden>
@@ -240,9 +241,40 @@ export default function TicketConfig({ open, onClose, onSubmit, drawerSize = "la
 
                     <Row gutter={16}>
                         <Col span={24}>
+                            <Form.Item
+                                name="tco_email_collection_interval"
+                                label="Récurrence de récupération des emails"
+                                tooltip="Fréquence à laquelle les emails sont automatiquement récupérés depuis la boîte configurée pour créer des tickets."
+                            >
+                                <Select placeholder="Sélectionner une fréquence">
+                                    <Select.Option value={null}>Ne pas connecter automatiquement</Select.Option>
+                                    <Select.Option value={5}>Toutes les 5 minutes</Select.Option>
+                                    <Select.Option value={10}>Toutes les 10 minutes</Select.Option>
+                                    <Select.Option value={15}>Toutes les 15 minutes</Select.Option>
+                                    <Select.Option value={30}>Toutes les 30 minutes</Select.Option>
+                                    <Select.Option value={60}>Toutes les heures</Select.Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={24}>
                             <Alert
-                                message="Forcer la collecte des emails"
-                                description="Cliquez sur le bouton ci-dessous pour forcer la collecte des emails depuis le compte configuré et créer automatiquement des tickets."
+                                message="Suppression automatique des emails collectés"
+                                description="Les emails récupérés depuis la boîte sont automatiquement et définitivement supprimés après la création du ticket correspondant."
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                            />
+                        </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                        <Col span={24}>
+                            <Alert
+                                message="Forcer la collecte maintenant"
+                                description="Cliquez sur le bouton ci-dessous pour déclencher immédiatement la collecte des emails depuis le compte configuré."
                                 type="warning"
                                 showIcon
                                 style={{ marginBottom: 16 }}

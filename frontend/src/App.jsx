@@ -97,6 +97,10 @@ const EInvoicingSettings = lazy(() => import("./pages/e-invoicing/EInvoicingSett
 
 // Prospection
 const ProspectDashboard = lazy(() => import("./pages/crm/ProspectDashboard"));
+const ProspectContacts = lazy(() => import("./pages/crm/ProspectContacts"));
+const CustomerContacts = lazy(() => import("./pages/crm/CustomerContacts"));
+const SupplierContacts = lazy(() => import("./pages/crm/SupplierContacts"));
+const Prospector = lazy(() => import("./pages/crm/Prospector"));
 
 const Opportunities = lazy(() => import("./pages/crm/Opportunities"));
 const OpportunityPipeline = lazy(() => import("./pages/crm/OpportunityPipeline"));
@@ -109,6 +113,9 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import { isAuthenticated } from "./services/auth";
 import AppLayout from './layout/AppLayout';
 import { clearMenuCache } from './hooks/useMenu';
+
+const SignDocument = lazy(() => import('./pages/public/SignDocument'));
+const MandateForm = lazy(() => import('./pages/public/MandateForm'));
 
 import './App.css'
 
@@ -147,6 +154,12 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+
+                {/* Route publique : Signature électronique (pas d'auth requise) */}
+                <Route path="/sign/:token" element={<SignDocument />} />
+
+                {/* Route publique : Mandat SEPA (pas d'auth requise) */}
+                <Route path="/mandate/:token" element={<MandateForm />} />
 
                 {/* Route protégée : Dashboard (authentification seulement) */}
                 <Route
@@ -867,6 +880,14 @@ function App() {
 
                 {/* Prospection */}
                 <Route
+                  path="/prospector"
+                  element={
+                    <ProtectedRoute permission="enrichment.search">
+                      <AppLayout><Prospector /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/prospect-dashboard"
                   element={
                     <ProtectedRoute permission="opportunities.view">
@@ -879,6 +900,30 @@ function App() {
                   element={
                     <ProtectedRoute permission="prospects.view">
                       <AppLayout><Partners /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/prospect-contacts"
+                  element={
+                    <ProtectedRoute permission="prospects.view">
+                      <AppLayout><ProspectContacts /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/customer-contacts"
+                  element={
+                    <ProtectedRoute permission="contacts.view">
+                      <AppLayout><CustomerContacts /></AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/supplier-contacts"
+                  element={
+                    <ProtectedRoute permission="contacts.view">
+                      <AppLayout><SupplierContacts /></AppLayout>
                     </ProtectedRoute>
                   }
                 />

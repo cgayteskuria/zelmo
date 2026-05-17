@@ -33,7 +33,7 @@ export default function AccountSelect({
         type:  item.type,
     }), []);
 
-    const { selectProps, reload, defaultValue } = useServerSearchSelect({
+    const { selectProps, reload, defaultValue, injectOption } = useServerSearchSelect({
         apiFn: (params) => accountsApi.options(params),
         mapOption,
         filters,
@@ -55,37 +55,18 @@ export default function AccountSelect({
         try {
             setAutoAccountLoading(true);
             const accountResponse = await accountsApi.autoCreateAccount(currentValue, filters?.code);
-            await reload();
-            form.setFieldsValue({ [fieldName]: accountResponse.account.id });
-            message.success(`Compte ${accountResponse.account.code} créé avec succès`);
+            const { id, code, label } = accountResponse.account;
+            injectOption({ value: id, label: `${code} - ${label}`, code, type: null });
+            form.setFieldsValue({ [fieldName]: id });
+            message.success(`Compte ${code} créé avec succès`);
         } catch (error) {
             console.error(error);
-            const data = error.response?.data;
+            const data = error.data;
             if (data?.errors) {
-                const fieldLabels = {
-                    accountCode: 'Code du compte auxiliaire',
-                    ptr_account_auxiliary_customer: 'Compte auxiliaire client',
-                    ptr_account_auxiliary_supplier: 'Compte auxiliaire fournisseur',
-                };
-                const validationLabels = {
-                    'validation.required': 'est requis',
-                    'validation.unique': 'existe déjà',
-                    'validation.max.string': 'est trop long',
-                    'validation.min.string': 'est trop court',
-                    'validation.numeric': 'doit être un nombre',
-                };
-                const msgs = Object.entries(data.errors).map(([field, errs]) => {
-                    const label = fieldLabels[field] || field;
-                    const errText = errs.map(e => validationLabels[e] || e).join(', ');
-                    return `${label} ${errText}`;
-                });
+                const msgs = Object.values(data.errors).flat();
                 message.error(msgs.join(' — '));
-            } else if (data?.message) {
-                const msgMap = {
-                    'validation.required': 'Un champ requis est manquant.',
-                    'validation.unique': 'Ce compte existe déjà.',
-                };
-                message.error(msgMap[data.message] || data.message);
+            } else if (error.message) {
+                message.error(error.message);
             } else {
                 message.error('Erreur lors de la création du compte');
             }
@@ -114,6 +95,7 @@ export default function AccountSelect({
     return (
         <Select
             placeholder="Sélectionner un compte"
+            allowClear
             {...selectProps}
             popupRender={customPopupRender || selectProps.popupRender}
             value={value !== undefined ? value : defaultValue}

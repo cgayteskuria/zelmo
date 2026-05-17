@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
-import { Drawer, Form, Input, Button, Row, Col, Spin, Space, InputNumber } from "antd";
+import { Drawer, Form, Input, Button, Row, Col, Spin, Space, InputNumber, Upload } from "antd";
 import { message } from '../../utils/antdStatic';
-import { SaveOutlined } from "@ant-design/icons";
+import { SaveOutlined, UploadOutlined } from "@ant-design/icons";
 import { saleOrderConfApi, messageTemplatesApi } from "../../services/api";
 import { useEntityForm } from "../../hooks/useEntityForm";
 import RichTextEditor from "../../components/common/RichTextEditor";
 import MessageTemplateSelect from "../../components/select/MessageTemplateSelect";
 import MessageEmailAccountSelect from "../../components/select/MessageEmailAccountSelect";
+import CommitmentDurationSelect from "../../components/select/CommitmentDurationSelect";
+import RenewDurationSelect from "../../components/select/RenewDurationSelect";
+import NoticeDurationSelect from "../../components/select/NoticeDurationSelect";
+import InvoicingDurationSelect from "../../components/select/InvoicingDurationSelect";
+import PaymentConditionSelect from "../../components/select/PaymentConditionSelect";
 
 const { TextArea } = Input;
 
@@ -19,6 +24,8 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
     const [form] = Form.useForm();
     const [durations, setDurations] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
+    const [cgvConfigured, setCgvConfigured] = useState(false);
+    const [cgvUploading, setCgvUploading] = useState(false);
 
 
     /**
@@ -54,7 +61,7 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
     /**
      * On instancie les fonctions CRUD
      */
-    const { submit, loading } = useEntityForm({
+    const { submit, loading, entity } = useEntityForm({
         api: saleOrderConfApi,
         entityId: saleOrderConfId,
         idField: "sco_id",
@@ -67,8 +74,30 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
         }
     });
 
+    useEffect(() => {
+        setCgvConfigured(!!entity?.sco_cgv_path);
+    }, [entity]);
+
     const handleFormSubmit = async (values) => {
         await submit(values);
+    };
+
+    const handleCgvUpload = async (options) => {
+        const { file, onSuccess, onError } = options;
+        const formData = new FormData();
+        formData.append('cgv_file', file);
+        setCgvUploading(true);
+        try {
+            await saleOrderConfApi.uploadCgv(saleOrderConfId, formData);
+            setCgvConfigured(true);
+            message.success('CGV uploadées avec succès.');
+            onSuccess();
+        } catch {
+            message.error("Erreur lors de l'upload des CGV.");
+            onError(new Error('Upload failed'));
+        } finally {
+            setCgvUploading(false);
+        }
     };
 
     /**
@@ -133,10 +162,10 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                             Devis
                         </h3>
                         <Row gutter={[16, 8]}>
-                            <Col span={24}>
+                            <Col span={8}>
                                 <Form.Item
                                     name="sco_qutote_default_validity"
-                                    label="Durée par défaut de validité d'un devis"
+                                    label="Validité devis par défaut (jrs) "
                                     rules={[
                                         {
                                             required: true,
@@ -149,6 +178,81 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                                         precision={0}
                                         min={1}
                                       
+                                    />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </div>
+
+                    {/* Section: Abonnements */}
+                    <div className="box" style={{ marginBottom: 24 }}>
+                        <h3
+                            style={{
+                                marginBottom: 16,
+                                fontWeight: "bold",
+                                fontSize: "16px"
+                            }}
+                        >
+                            Abonnements (valeurs par défaut)
+                        </h3>
+                        <Row gutter={[16, 8]}>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="fk_dur_id_commitment"
+                                    label="Engagement par défaut"
+                                >
+                                    <CommitmentDurationSelect
+                                        loadInitially={true}
+                                        initialData={entity?.commitmentDuration}
+                                        placeholder="Sélectionner une durée d'engagement..."
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="fk_dur_id_renew"
+                                    label="Reconduction par défaut"
+                                >
+                                    <RenewDurationSelect
+                                        loadInitially={true}
+                                        initialData={entity?.renewDuration}
+                                        placeholder="Sélectionner une reconduction..."
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="fk_dur_id_notice"
+                                    label="Préavis par défaut"
+                                >
+                                    <NoticeDurationSelect
+                                        loadInitially={true}
+                                        initialData={entity?.noticeDuration}
+                                        placeholder="Sélectionner un préavis..."
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="fk_dur_id_invoicing"
+                                    label="Périodicité de facturation par défaut"
+                                >
+                                    <InvoicingDurationSelect
+                                        loadInitially={true}
+                                        initialData={entity?.invoicingDuration}
+                                        placeholder="Sélectionner une périodicité..."
+                                    />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="fk_dur_id_payment_condition"
+                                    label="Condition de règlement par défaut"
+                                >
+                                    <PaymentConditionSelect
+                                        loadInitially={true}
+                                        initialData={entity?.paymentCondition}
+                                        placeholder="Sélectionner une condition de règlement..."
                                     />
                                 </Form.Item>
                             </Col>
@@ -171,7 +275,7 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                                 <style>
                                     {`
                                     .ql-container {
-                                        height: 250px;
+                                        height: 150px;
                                     }
 
                                     .ql-editor {
@@ -191,7 +295,7 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                                     getValueFromEvent={(content) => content}
                                 >
                                     <RichTextEditor
-                                        height={300}
+                                        height={150}
                                         placeholder="Saisir la mention légale..."
                                     />
                                 </Form.Item>
@@ -220,6 +324,37 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                                         placeholder="Sélectionner un compte email..."
                                     />
                                 </Form.Item>
+                            </Col>
+                        </Row>
+                    </div>
+
+                    {/* Section: CGV */}
+                    <div className="box" style={{ marginBottom: 24 }}>
+                        <h3 style={{ marginBottom: 16, fontWeight: "bold", fontSize: "16px" }}>
+                            Conditions Générales de Vente (CGV)
+                        </h3>
+                        <Row gutter={[16, 8]}>
+                            <Col span={24}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                    {cgvConfigured && (
+                                        <span style={{ color: "#52c41a", fontSize: 13 }}>
+                                            ✓ CGV configurées
+                                        </span>
+                                    )}
+                                    <Upload
+                                        accept=".pdf"
+                                        showUploadList={false}
+                                        customRequest={handleCgvUpload}
+                                    >
+                                        <Button icon={<UploadOutlined />} loading={cgvUploading}>
+                                            {cgvConfigured ? "Remplacer les CGV (PDF)" : "Uploader les CGV (PDF)"}
+                                        </Button>
+                                    </Upload>
+                                </div>
+                                <div style={{ fontSize: 12, color: "#888", marginTop: 6 }}>
+                                    Le fichier PDF des CGV sera accessible lors de la signature électronique des devis.
+                                    L&apos;envoi d&apos;une demande de signature nécessite que les CGV soient configurées.
+                                </div>
                             </Col>
                         </Row>
                     </div>
@@ -263,21 +398,6 @@ export default function SaleOrderConf({ saleOrderConfId, open, onClose, onSubmit
                                     ]}
                                 >
                                     <MessageTemplateSelect />
-                                </Form.Item>
-                            </Col>
-
-                            <Col span={24}>
-                                <Form.Item
-                                    name="fk_emt_id_token_renew"
-                                    label="Mail contenant le token"
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: "Ce modèle est requis"
-                                        }
-                                    ]}
-                                >
-                                     <MessageTemplateSelect />
                                 </Form.Item>
                             </Col>
 

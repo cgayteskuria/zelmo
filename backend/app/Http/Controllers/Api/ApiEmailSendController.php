@@ -10,6 +10,7 @@ use App\Services\DocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -39,6 +40,8 @@ class ApiEmailSendController extends Controller
             'attachments'      => 'nullable|array|max:10',
             'attachments.*'    => 'file|max:10240',
             'document_ids'     => 'nullable|string',
+            'entity_type'      => 'nullable|string|in:sale_order,invoice,contract,purchase_order',
+            'entity_id'        => 'nullable|integer',
         ], [
             'email_account_id.required' => 'Veuillez sélectionner un compte email expéditeur.',
             'email_account_id.exists'   => "Le compte email sélectionné n'existe pas.",
@@ -129,6 +132,26 @@ class ApiEmailSendController extends Controller
             $this->cleanupTempFiles($tempFiles);
 
             if ($result['success']) {
+                if ($request->entity_type && $request->entity_id) {
+                    $details = array_filter([
+                        'subject' => $request->subject,
+                        'to'      => $request->to,
+                        'cc'      => $request->cc ?: null,
+                        'bcc'     => $request->bcc ?: null,
+                    ], fn($v) => $v !== null);
+                    DB::table('logs_log')->insert([
+                        'log_created'     => now(),
+                        'log_updated'     => now(),
+                        'fk_usr_id'       => Auth::id(),
+                        'log_action'      => 'email_sent',
+                        'log_entity_type' => $request->entity_type,
+                        'log_entity_id'   => (int) $request->entity_id,
+                        'log_details'     => json_encode($details, JSON_UNESCAPED_UNICODE),
+                        'log_ip_address'  => $request->ip(),
+                        'log_user_agent'  => $request->userAgent(),
+                    ]);
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Email envoyé avec succès',

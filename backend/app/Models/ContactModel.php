@@ -8,6 +8,11 @@ class ContactModel extends BaseModel
     protected $table = 'contact_ctc';
     protected $primaryKey = 'ctc_id';
     public $incrementing = true;
+
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['ctc_firstname', 'ctc_lastname', 'ctc_email'];
+    }
     protected $keyType = 'int';
 
     const CREATED_AT = 'ctc_created';

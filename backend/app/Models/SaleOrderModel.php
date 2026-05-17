@@ -20,6 +20,11 @@ class SaleOrderModel extends BizDocumentModel
     const CREATED_AT = 'ord_created';
     const UPDATED_AT = 'ord_updated';
 
+    protected static function getLoggableSnapshotFields(): array
+    {
+        return ['ord_number'];
+    }
+
     protected $guarded = [];
 
     /**
@@ -43,6 +48,13 @@ class SaleOrderModel extends BizDocumentModel
             // Valider qu'il y a au moins une ligne produit (orl_type=0) pour passer hors brouillon
             if ($model->isDirty('ord_status') && $model->ord_status > self::STATUS_DRAFT) {
                 $model->validateHasProductLine();
+            }
+
+            // Auto-compléter si facturation (totale ou contractuelle) + livraison totale
+            $invoicingDone = in_array((int) $model->ord_invoicing_state, [self::INVOICING_FULLY, self::INVOICING_IN_CONTRACT]);
+            $deliveryDone  = (int) $model->ord_delivery_state === self::DELIVERY_FULLY;
+            if ($invoicingDone && $deliveryDone && (int) $model->ord_status === self::STATUS_IN_PROGRESS) {
+                $model->ord_status = self::STATUS_COMPLETED;
             }
 
             // Bloquer la modification si un BL livré existe (sauf champs autorisés)
@@ -81,14 +93,16 @@ class SaleOrderModel extends BizDocumentModel
     }
 
     protected $casts = [
-        'ord_date' => 'date',
-        'ord_valid' => 'date',
-        'ord_being_edited' => 'boolean',
-        'ord_totalht' => 'decimal:2',
-        'ord_totalhtsub' => 'decimal:2',
-        'ord_totalhtcomm' => 'decimal:2',
-        'ord_totaltax' => 'decimal:2',
-        'ord_totalttc' => 'decimal:2',
+        'ord_date'                   => 'date',
+        'ord_valid'                  => 'date',
+        'ord_being_edited'           => 'boolean',
+        'ord_totalht'                => 'decimal:2',
+        'ord_totalhtsub'             => 'decimal:2',
+        'ord_totalhtcomm'            => 'decimal:2',
+        'ord_totaltax'               => 'decimal:2',
+        'ord_totalttc'               => 'decimal:2',
+        'ord_sign_token_expires_at'  => 'datetime',
+        'ord_sign_token_used_at'     => 'datetime',
     ];
 
     // Constantes de statut
@@ -161,6 +175,21 @@ class SaleOrderModel extends BizDocumentModel
     public function commitmentDuration(): BelongsTo
     {
         return $this->belongsTo(DurationsModel::class, 'fk_dur_id', 'dur_id');
+    }
+
+    public function renewDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_renew', 'dur_id');
+    }
+
+    public function noticeDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_notice', 'dur_id');
+    }
+
+    public function invoicingDuration(): BelongsTo
+    {
+        return $this->belongsTo(DurationsModel::class, 'fk_dur_id_invoicing', 'dur_id');
     }
 
     public function lines(): HasMany

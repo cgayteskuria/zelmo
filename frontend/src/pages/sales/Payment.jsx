@@ -71,7 +71,7 @@ export default function Payment({ paymentId, open, onClose, onSubmit, paymentTyp
             if (onSubmit) await onSubmit();
             if (onClose) onClose();
         } catch (err) {
-            message.error(err?.response?.data?.message || 'Erreur lors de la suppression');
+            message.error(err?.message || 'Erreur lors de la suppression');
         } finally {
             setDeleting(false);
         }

@@ -12,6 +12,7 @@ use App\Models\SaleOrderModel;
 use App\Models\SaleOrderLineModel;
 use App\Models\PurchaseOrderModel;
 use App\Models\PurchaseOrderLineModel;
+use App\Models\ContractLineModel;
 use App\Models\StockMovementModel;
 use App\Models\WarehouseModel;
 use App\Services\Pdf\DocumentPdfService;
@@ -509,38 +510,7 @@ class ApiDeliveryNoteController
         try {
             DB::beginTransaction();
 
-            // Valider le bon
-            $deliveryNote->dln_status = DeliveryNoteModel::STATUS_VALIDATED;
-            $deliveryNote->save();
-
-            // Créer les mouvements de stock
-            $this->createStockMovements($deliveryNote);
-
-            // Mettre à jour l'état de livraison de la commande
-            $remainderNote = null;
-            if ($deliveryNote->dln_operation == DeliveryNoteModel::OPERATION_CUSTOMER_DELIVERY && $deliveryNote->fk_ord_id) {
-                $this->updateSaleOrderDeliveryState($deliveryNote->fk_ord_id);
-                // Auto-générer un BL brouillon pour le reliquat
-                $order = SaleOrderModel::find($deliveryNote->fk_ord_id);
-                if ($order) {
-                    self::autoGenerateFromSaleOrder($order);
-                    $remainderNote = DeliveryNoteModel::where('fk_ord_id', $order->ord_id)
-                        ->where('dln_status', DeliveryNoteModel::STATUS_DRAFT)
-                        ->where('dln_operation', DeliveryNoteModel::OPERATION_CUSTOMER_DELIVERY)
-                        ->first();
-                }
-            } elseif ($deliveryNote->dln_operation == DeliveryNoteModel::OPERATION_SUPPLIER_DELIVERY && $deliveryNote->fk_por_id) {
-                $this->updatePurchaseOrderDeliveryState($deliveryNote->fk_por_id);            
-                // Auto-générer un BR brouillon pour le reliquat
-                $order = PurchaseOrderModel::find($deliveryNote->fk_por_id);
-                if ($order) {
-                    self::autoGenerateFromPurchaseOrder($order);
-                    $remainderNote = DeliveryNoteModel::where('fk_por_id', $order->por_id)
-                        ->where('dln_status', DeliveryNoteModel::STATUS_DRAFT)
-                        ->where('dln_operation', DeliveryNoteModel::OPERATION_SUPPLIER_DELIVERY)
-                        ->first();
-                }
-            }
+            $remainderNote = $this->doValidateDeliveryNote($deliveryNote);
 
             DB::commit();
 
@@ -561,6 +531,132 @@ class ApiDeliveryNoteController
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Créer un BL depuis une commande client, mettre à jour ses lignes (qty, serial, lot),
+     * et l'expédier immédiatement si demandé.
+     *
+     * POST /sale-orders/{orderId}/generate-delivery
+     * Body: { lines: [{orl_id, qty, serial_number, lot_number}], activate_ids: [orl_id], validate: bool }
+     */
+    public function deliverFromSaleOrder(Request $request, int $orderId): JsonResponse
+    {
+        $saleOrder = SaleOrderModel::find($orderId);
+        if (!$saleOrder) {
+            return response()->json(['success' => false, 'message' => 'Commande introuvable.'], 404);
+        }
+        if ($saleOrder->ord_status !== SaleOrderModel::STATUS_IN_PROGRESS) {
+            return response()->json(['success' => false, 'message' => 'Seules les commandes confirmées peuvent être traitées.'], 400);
+        }
+
+        $linesPayload  = $request->input('lines', []);
+        $activateIds   = $request->input('activate_ids', []);
+        $shouldValidate = (bool) $request->input('validate', false);
+
+        $deliveryNote = DeliveryNoteModel::where('fk_ord_id', $orderId)
+            ->where('dln_status', DeliveryNoteModel::STATUS_DRAFT)
+            ->where('dln_operation', DeliveryNoteModel::OPERATION_CUSTOMER_DELIVERY)
+            ->first();
+
+        if (!$deliveryNote) {
+            return response()->json(['success' => false, 'message' => 'Aucun bon de livraison brouillon trouvé pour cette commande.'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Mettre à jour les lignes du BL (qty, serial, lot)
+            foreach ($linesPayload as $entry) {
+                $orlId = (int) ($entry['orl_id'] ?? 0);
+                if (!$orlId) continue;
+
+                $dlnLine = DeliveryNoteLineModel::where('fk_dln_id', $deliveryNote->dln_id)
+                    ->where('fk_orl_id', $orlId)
+                    ->first();
+
+                if ($dlnLine) {
+                    $dlnLine->dnl_qty = max(0, (float) ($entry['qty'] ?? $dlnLine->dnl_qty));
+                    $dlnLine->dnl_serial_number = $entry['serial_number'] ?? null;
+                    $dlnLine->dnl_lot_number    = $entry['lot_number'] ?? null;
+                    $dlnLine->save();
+                }
+            }
+
+            // Activer les lignes d'abonnement sélectionnées
+            foreach ($activateIds as $orlId) {
+                $contractLine = ContractLineModel::where('fk_orl_id', (int) $orlId)->first();
+                if ($contractLine) {
+                    $contractLine->col_status = ContractLineModel::STATUS_ACTIVE;
+                    $contractLine->save();
+                }
+            }
+
+            $remainderNote = null;
+            if ($shouldValidate) {
+                $linesCount = DeliveryNoteLineModel::where('fk_dln_id', $deliveryNote->dln_id)->count();
+                if ($linesCount === 0) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Le bon doit contenir au moins une ligne.'], 400);
+                }
+                $remainderNote = $this->doValidateDeliveryNote($deliveryNote);
+            }
+
+            DB::commit();
+
+            $response = [
+                'success'  => true,
+                'message'  => $shouldValidate ? 'Bon de livraison validé et expédié avec succès.' : 'Bon de livraison enregistré en brouillon.',
+                'data'     => ['delivery_note' => $deliveryNote],
+            ];
+            if ($remainderNote) {
+                $response['data']['remainder_note'] = $remainderNote;
+                $response['message'] .= ' Un nouveau bon brouillon a été créé pour le reliquat.';
+            }
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Erreur : ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Logique interne de validation d'un bon (statut, stocks, reliquat).
+     * Doit être appelée dans une transaction DB active.
+     * Retourne le bon brouillon de reliquat s'il a été créé.
+     */
+    private function doValidateDeliveryNote(DeliveryNoteModel $deliveryNote): ?DeliveryNoteModel
+    {
+        $deliveryNote->dln_status = DeliveryNoteModel::STATUS_VALIDATED;
+        $deliveryNote->save();
+
+        $this->createStockMovements($deliveryNote);
+
+        $remainderNote = null;
+        if ($deliveryNote->dln_operation == DeliveryNoteModel::OPERATION_CUSTOMER_DELIVERY && $deliveryNote->fk_ord_id) {
+            $this->updateSaleOrderDeliveryState($deliveryNote->fk_ord_id);
+            $order = SaleOrderModel::find($deliveryNote->fk_ord_id);
+            if ($order) {
+                self::autoGenerateFromSaleOrder($order);
+                $remainderNote = DeliveryNoteModel::where('fk_ord_id', $order->ord_id)
+                    ->where('dln_status', DeliveryNoteModel::STATUS_DRAFT)
+                    ->where('dln_operation', DeliveryNoteModel::OPERATION_CUSTOMER_DELIVERY)
+                    ->first();
+            }
+        } elseif ($deliveryNote->dln_operation == DeliveryNoteModel::OPERATION_SUPPLIER_DELIVERY && $deliveryNote->fk_por_id) {
+            $this->updatePurchaseOrderDeliveryState($deliveryNote->fk_por_id);
+            $order = PurchaseOrderModel::find($deliveryNote->fk_por_id);
+            if ($order) {
+                self::autoGenerateFromPurchaseOrder($order);
+                $remainderNote = DeliveryNoteModel::where('fk_por_id', $order->por_id)
+                    ->where('dln_status', DeliveryNoteModel::STATUS_DRAFT)
+                    ->where('dln_operation', DeliveryNoteModel::OPERATION_SUPPLIER_DELIVERY)
+                    ->first();
+            }
+        }
+
+        return $remainderNote;
     }
 
     /**
@@ -936,6 +1032,7 @@ class ApiDeliveryNoteController
                 $deliveryNote->fk_ord_id = $order->ord_id;
                 $deliveryNote->fk_whs_id = $order->fk_whs_id ?? ($defaultWarehouse ? $defaultWarehouse->whs_id : null);
                 $deliveryNote->dln_date = now()->format('Y-m-d');
+                $deliveryNote->fk_usr_id_author = $order->fk_usr_id_author ?? $order->fk_usr_id_seller ?? $order->fk_usr_id_updater;
                 $deliveryNote->save();
             }
 
@@ -1030,6 +1127,7 @@ class ApiDeliveryNoteController
                 $deliveryNote->fk_por_id = $order->por_id;
                 $deliveryNote->fk_whs_id = $order->fk_whs_id ?? ($defaultWarehouse ? $defaultWarehouse->whs_id : null);
                 $deliveryNote->dln_date = now()->format('Y-m-d');
+                $deliveryNote->fk_usr_id_author = $order->fk_usr_id_author ?? $order->fk_usr_id_seller ?? $order->fk_usr_id_updater;
                 $deliveryNote->save();
             }
 

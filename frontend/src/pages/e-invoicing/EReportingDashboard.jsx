@@ -51,7 +51,7 @@ export default function EReportingDashboard() {
             message.success("Données d'e-reporting transmises au PA.");
             load();
         } catch (err) {
-            message.error(err?.response?.data?.message ?? "Erreur lors de la transmission.");
+            message.error(err?.message ?? "Erreur lors de la transmission.");
         } finally {
             setTransmitting(null);
         }
@@ -64,7 +64,7 @@ export default function EReportingDashboard() {
             message.success("Période construite avec succès.");
             load();
         } catch (err) {
-            message.error(err?.response?.data?.message ?? "Erreur lors de la construction de la période.");
+            message.error(err?.message ?? "Erreur lors de la construction de la période.");
         } finally {
             setBuildLoading(false);
         }

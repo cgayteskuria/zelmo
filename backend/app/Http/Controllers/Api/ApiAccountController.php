@@ -208,6 +208,12 @@ class ApiAccountController extends Controller
         $request->validate([
             'accountLabel' => 'required|string',
             'accountCode' => 'required|string|in:411%,401%'
+        ], [
+            'accountLabel.required' => 'Le libellé du compte est obligatoire.',
+            'accountLabel.string'   => 'Le libellé du compte doit être une chaîne de caractères.',
+            'accountCode.required'  => 'Le type de compte est obligatoire (client 411 ou fournisseur 401).',
+            'accountCode.string'    => 'Le code compte doit être une chaîne de caractères.',
+            'accountCode.in'        => 'Le type de compte doit être "411%" (client) ou "401%" (fournisseur).',
         ]);
 
         // Déterminer le préfixe selon le type de compte

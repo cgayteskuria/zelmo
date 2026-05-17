@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, useEffect, lazy, Suspense, useRef } from "react";
 import { Drawer, Form, Input, Button, Row, Col, Switch, App, Popconfirm, Tabs, Spin, Space, Divider, Table, Tag, Tooltip, Card } from "antd";
-import { DeleteOutlined, SaveOutlined, PlusOutlined, LinkedinOutlined, LinkOutlined } from "@ant-design/icons";
-import { partnersApi, contactsApi, checkAccountAuxiliaryApi, checkLinkedRecordsApi } from "../../services/api";
+import { DeleteOutlined, SaveOutlined, PlusOutlined, LinkedinOutlined, LinkOutlined, InboxOutlined } from "@ant-design/icons";
+import { partnersApi, contactsApi, checkAccountAuxiliaryApi, checkLinkedRecordsApi, prospectsApi } from "../../services/api";
 import CountrySelect from "../../components/select/CountrySelect";
+import UserSelect from "../../components/select/UserSelect";
 import { opportunitiesApi } from "../../services/apiProspect";
 import AccountSelect from "../../components/select/AccountSelect";
 import PaymentModeSelect from "../../components/select/PaymentModeSelect";
@@ -20,6 +21,7 @@ import ActivityTimeline from "../../components/crm/ActivityTimeline";
 const FilesTab = lazy(() => import('../../components/bizdocument/FilesTab'));
 const BankTab = lazy(() => import('../../components/bizdocument/BankTab'));
 const LinkedObjectsTab = lazy(() => import('../../components/bizdocument/LinkedObjectsTab'));
+const HistoryTimeline = lazy(() => import('../../components/common/HistoryTimeline'));
 
 // Composant de chargement pour les onglets
 const TabLoader = () => (
@@ -45,11 +47,28 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
     const [activeTab, setActiveTab] = useState('general');
 
     const pageLabel = Form.useWatch('ptr_name', form);
-    const partnerName= Form.useWatch('ptr_name', form);
+    const partnerName = Form.useWatch('ptr_name', form);
 
     const isCustomer = Form.useWatch('ptr_is_customer', form);
     const isSupplier = Form.useWatch('ptr_is_supplier', form);
     const isProspect = Form.useWatch('ptr_is_prospect', form);
+    const isProspectArchived = Form.useWatch('ptr_is_prospect_archived', form);
+
+    const partnerPerms = useMemo(() => {
+        const build = (action) => {
+            const perms = [`partners.${action}`];
+            if (isCustomer) perms.push(`customers.${action}`);
+            if (isSupplier) perms.push(`suppliers.${action}`);
+            if (isProspect) perms.push(`prospects.${action}`);
+            return perms;
+        };
+        return {
+            create: build('create'),
+            edit: build('edit'),
+            delete: build('delete'),
+            createNew: ['partners.create', 'customers.create', 'suppliers.create', 'prospects.create'],
+        };
+    }, [isCustomer, isSupplier, isProspect]);
 
     const accountAuxiliaryCustomer = Form.useWatch('ptr_account_auxiliary_customer', form);
     const accountAuxiliarySupplier = Form.useWatch('ptr_account_auxiliary_supplier', form);
@@ -81,6 +100,12 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
     const [opportunities, setOpportunities] = useState([]);
     const [loadingOpportunities, setLoadingOpportunities] = useState(false);
 
+    // ID du partenaire courant (peut changer après création auto-sauvegardée)
+    const [localPartnerId, setLocalPartnerId] = useState(partnerId);
+    useEffect(() => {
+        setLocalPartnerId(partnerId);
+    }, [partnerId]);
+
     const onDataLoadedCallback = useCallback((data) => {
         setDocumentsCount(data.documents_count ?? 0);
         setCustomerUseBillingAddress(!data.ptr_customer_delivery_address);
@@ -92,12 +117,16 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
      */
     const { submit, remove, loading, entity } = useEntityForm({
         api: partnersApi,
-        entityId: partnerId,
+        entityId: localPartnerId,
         idField: 'ptr_id',
         form,
         open,
         onDataLoaded: onDataLoadedCallback,
         onSuccess: ({ action, data }, closeDrawer = true) => {
+            if (action === 'create' && data?.ptr_id) {
+                setLocalPartnerId(data.ptr_id);
+                form.setFieldValue('ptr_id', data.ptr_id);
+            }
             onSubmit?.({ action, data });
             if (closeDrawer) onClose?.();
         },
@@ -116,6 +145,21 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
 
     const handleDelete = async () => {
         await remove();
+    };
+
+    const [archiveLoading, setArchiveLoading] = useState(false);
+    const handleArchive = async () => {
+        setArchiveLoading(true);
+        try {
+            await prospectsApi.archive(localPartnerId);
+            message.success("Prospect archivé avec succès.");
+            onSubmit?.({ action: 'update' });
+            onClose?.();
+        } catch (err) {
+            message.error(err?.message ?? "Erreur lors de l'archivage.");
+        } finally {
+            setArchiveLoading(false);
+        }
     };
 
     const handleDuplicate = async () => {
@@ -137,13 +181,54 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
     };
 
     /**
+     * Gestion des erreurs de validation : bascule sur l'onglet contenant le champ en erreur
+     */
+    const onFinishFailed = ({ errorFields }) => {
+        if (errorFields.length > 0) {
+            const firstErrorField = errorFields[0].name[0];
+
+            if (['ptr_name', 'ptr_address', 'ptr_zip', 'ptr_city', 'ptr_phone', 'ptr_email', 'ptr_is_active', 'ptr_is_prospect', 'ptr_is_customer', 'ptr_is_supplier'].includes(firstErrorField)) {
+                setActiveTab('general');
+            } else if (['fk_pam_id_customer', 'fk_dur_id_payment_condition_customer', 'fk_acc_id_customer', 'ptr_account_auxiliary_customer', 'fk_usr_id_seller', 'ptr_customer_note'].includes(firstErrorField)) {
+                setActiveTab('customer');
+            } else if (['fk_pam_id_supplier', 'fk_dur_id_payment_condition_supplier', 'fk_acc_id_supplier', 'ptr_account_auxiliary_supplier'].includes(firstErrorField)) {
+                setActiveTab('supplier');
+            }
+
+            message.error("Veuillez remplir tous les champs obligatoires");
+        }
+    };
+
+    // Ouvre le drawer contact — si le partenaire n'est pas encore sauvegardé, sauvegarde d'abord
+    const handleNewContactClick = useCallback(async () => {
+        if (localPartnerId) {
+            setSelectedContactId(null);
+            setContactDrawerOpen(true);
+            return;
+        }
+        try {
+            const values = await form.validateFields();
+            const result = await submit(values, { closeDrawer: false });
+            if (result?.data?.ptr_id) {
+                setActiveTab('contacts');
+                setSelectedContactId(null);
+                setContactDrawerOpen(true);
+            }
+        } catch (error) {
+            if (error?.errorFields) {
+                onFinishFailed({ errorFields: error.errorFields });
+            }
+        }
+    }, [localPartnerId, form, submit]);
+
+    /**
      * Charge les contacts liés au partenaire
      */
     const loadContacts = useCallback(async () => {
-        if (!partnerId) return;
+        if (!localPartnerId) return;
         setLoadingContacts(true);
         try {
-            const response = await partnersApi.getContacts(partnerId);
+            const response = await partnersApi.getContacts(localPartnerId);
             if (response?.data) {
                 setContacts(response.data);
             }
@@ -152,7 +237,7 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
         } finally {
             setLoadingContacts(false);
         }
-    }, [partnerId]);
+    }, [localPartnerId]);
 
     /**
      * Lie un contact existant au partenaire
@@ -191,32 +276,13 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
     }, [partnerId]);
 
     useEffect(() => {
-        if (partnerId && open) {
+        if (localPartnerId && open) {
             loadContacts();
             if (isProspect) {
                 loadOpportunities();
             }
         }
-    }, [partnerId, open, loadContacts, isProspect, loadOpportunities]);
-
-    /**
-     * Gestion des erreurs de validation : bascule sur l'onglet contenant le champ en erreur
-     */
-    const onFinishFailed = ({ errorFields }) => {
-        if (errorFields.length > 0) {
-            const firstErrorField = errorFields[0].name[0];
-
-            if (['ptr_name', 'ptr_address', 'ptr_zip', 'ptr_city', 'ptr_phone', 'ptr_email', 'ptr_is_active', 'ptr_is_prospect', 'ptr_is_customer', 'ptr_is_supplier'].includes(firstErrorField)) {
-                setActiveTab('general');
-            } else if (['fk_pam_id_customer', 'fk_dur_id_payment_condition_customer', 'fk_acc_id_customer', 'ptr_account_auxiliary_customer', 'fk_usr_id_seller', 'ptr_customer_note'].includes(firstErrorField)) {
-                setActiveTab('customer');
-            } else if (['fk_pam_id_supplier', 'fk_dur_id_payment_condition_supplier', 'fk_acc_id_supplier', 'ptr_account_auxiliary_supplier'].includes(firstErrorField)) {
-                setActiveTab('supplier');
-            }
-
-            message.error("Veuillez remplir tous les champs obligatoires");
-        }
-    };
+    }, [localPartnerId, open, loadContacts, isProspect, loadOpportunities]);
 
     /**
      * Colonnes du tableau des contacts
@@ -420,165 +486,173 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                 key: 'general',
                 label: 'Général',
                 children: (
-                    <><div className="box">
-                        <Row gutter={[16, 8]}>
-                            <Col span={4}>
-                                <Form.Item name="ptr_is_active" label="Actif" valuePropName="checked" initialValue={true}>
-                                    <Switch />
-                                </Form.Item>
-                            </Col>
-                            <Col span={4}>
+                    <>
+                        <div className="box">
+                            <Row gutter={[16, 8]}>
+                                <Col span={4}>
+                                    <Form.Item name="ptr_is_active" label="Actif" valuePropName="checked" initialValue={true}>
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={4}>
 
-                                <Tooltip title={
-                                    (entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0)
-                                        ? `Impossible de désactiver : ${[
-                                            entity?.opportunities_count > 0 ? `${entity.opportunities_count} opportunité(s)` : null,
-                                            entity?.prospect_activities_count > 0 ? `${entity.prospect_activities_count} activité(s)` : null,
-                                        ].filter(Boolean).join(' et ')} lié(s)`
-                                        : undefined
-                                }>
-                                    <div> {/* ← le span reçoit le Tooltip, pas le Switch directement */}
-                                        <Form.Item name="ptr_is_prospect" label="Prospect" valuePropName="checked" initialValue={false}>
-                                            <Switch
-                                                disabled={entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0}
-                                            /* onChange={(checked) => {
-                                                 if (!checked && (entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0)) {
-                                                     form.setFieldsValue({ ptr_is_prospect: true });
-                                                 }
-                                             }}*/
-                                            />
-                                        </Form.Item>
-                                    </div>
-                                </Tooltip>
+                                    <Tooltip title={
+                                        (entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0)
+                                            ? `Impossible de désactiver : ${[
+                                                entity?.opportunities_count > 0 ? `${entity.opportunities_count} opportunité(s)` : null,
+                                                entity?.prospect_activities_count > 0 ? `${entity.prospect_activities_count} activité(s)` : null,
+                                            ].filter(Boolean).join(' et ')} lié(s)`
+                                            : undefined
+                                    }>
+                                        <div> {/* ← le span reçoit le Tooltip, pas le Switch directement */}
+                                            <Form.Item name="ptr_is_prospect" label="Prospect" valuePropName="checked" initialValue={false}>
+                                                <Switch
+                                                    disabled={entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0}
+                                                /* onChange={(checked) => {
+                                                     if (!checked && (entity?.opportunities_count > 0 || entity?.prospect_activities_count > 0)) {
+                                                         form.setFieldsValue({ ptr_is_prospect: true });
+                                                     }
+                                                 }}*/
+                                                />
+                                            </Form.Item>
+                                        </div>
+                                    </Tooltip>
 
-                            </Col>
-                            <Col span={4}>
-                                <Form.Item name="ptr_is_customer" label="Client" valuePropName="checked" initialValue={false}>
-                                    <Switch onChange={handleCustomerSwitchChange} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={4}>
-                                <Form.Item name="ptr_is_supplier" label="Fournisseur" valuePropName="checked" initialValue={false}>
-                                    <Switch onChange={handleSupplierSwitchChange} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={[16, 8]}>
-                            <Col span={24}>
-                                <Form.Item name="ptr_name" label="Nom" rules={[{ required: true, message: "Le nom est requis" }]}                                                              >
-                                    <Input placeholder="Nom du partenaire" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                                </Col>
+                                <Col span={4}>
+                                    <Form.Item name="ptr_is_customer" label="Client" valuePropName="checked" initialValue={false}>
+                                        <Switch onChange={handleCustomerSwitchChange} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={4}>
+                                    <Form.Item name="ptr_is_supplier" label="Fournisseur" valuePropName="checked" initialValue={false}>
+                                        <Switch onChange={handleSupplierSwitchChange} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Row gutter={[16, 8]}>
+                                <Col span={24}>
+                                    <Form.Item name="ptr_name" label="Nom" rules={[{ required: true, message: "Le nom est requis" }]}                                                              >
+                                        <Input placeholder="Nom du partenaire" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
 
-                        <Row gutter={[16, 8]}>
-                            <Col span={24}>
-                                <Form.Item name="ptr_address" label="Adresse" >
-                                    <Input placeholder="Adresse" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                            <Row gutter={[16, 8]}>
+                                <Col span={24}>
+                                    <Form.Item name="ptr_address" label="Adresse" >
+                                        <Input placeholder="Adresse" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
 
-                        <Row gutter={[16, 8]}>
-                            <Col span={6}>
-                                <Form.Item name="ptr_zip" label="Code Postal">
-                                    <Input placeholder="Code postal" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item name="ptr_city" label="Ville">
-                                    <Input placeholder="Ville" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={6}>
-                                <Form.Item
-                                    name="ptr_country_code"
-                                    label="Pays"
-                                    rules={[
-                                        ({ getFieldValue }) => ({
-                                            required: getFieldValue("ptr_is_customer"),
-                                            message: "Le pays est requis pour un client.",
-                                        }),
-                                    ]}
-                                >
-                                    <CountrySelect initialData={entity?.ptr_country_code} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                            <Row gutter={[16, 8]}>
+                                <Col span={6}>
+                                    <Form.Item name="ptr_zip" label="Code Postal">
+                                        <Input placeholder="Code postal" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_city" label="Ville">
+                                        <Input placeholder="Ville" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={6}>
+                                    <Form.Item
+                                        name="ptr_country_code"
+                                        label="Pays"
+                                        rules={[
+                                            ({ getFieldValue }) => ({
+                                                required: getFieldValue("ptr_is_customer"),
+                                                message: "Le pays est requis pour un client.",
+                                            }),
+                                        ]}
+                                    >
+                                        <CountrySelect initialData={entity?.ptr_country_code} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
 
-                        <Row gutter={[16, 8]}>
-                            <Col span={12}>
-                                <Form.Item name="ptr_phone" label="Téléphone" >
-                                    <Input placeholder="Téléphone" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item name="ptr_email" label="Email" rules={[{ type: 'email', message: "Email invalide" }]}                                >
-                                    <Input placeholder="Email" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={[16, 8]}>
-                            <Col span={12}>
-                                <Form.Item name="ptr_effectif" label="Effectif">
-                                    <Input placeholder="Effectif" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item name="ptr_activity" label="Activité">
-                                    <Input placeholder="Activité / secteur" />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={[16, 8]}>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="ptr_siret"
-                                    label="SIRET"
-                                    rules={[
-                                        { len: 14, message: "Le SIRET doit comporter 14 chiffres." },
-                                        { pattern: /^\d{14}$/, message: "Le SIRET ne doit contenir que des chiffres." },
-                                        ({ getFieldValue }) => ({
-                                            required: getFieldValue("ptr_is_customer"),
-                                            message: "Le SIRET est requis pour un client (nécessaire pour la facturation électronique).",
-                                        }),
-                                    ]}
-                                    extra={<span style={{ fontSize: 11 }}>14 chiffres — requis pour la facturation électronique des clients</span>}
-                                >
-                                    <Input placeholder="12345678900012" maxLength={14} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="ptr_vat_number"
-                                    label="N° TVA intracommunautaire"
-                                    rules={[{ pattern: /^[A-Z]{2}/, message: "Format : FR + 11 chiffres" }]}
-                                >
-                                    <Input placeholder="FR12345678901" style={{ textTransform: "uppercase" }} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
+                            <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_phone" label="Téléphone" >
+                                        <Input placeholder="Téléphone" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_email" label="Email" rules={[{ type: 'email', message: "Email invalide" }]}                                >
+                                        <Input placeholder="Email" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_effectif" label="Effectif">
+                                        <Input placeholder="Effectif" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_activity" label="Activité">
+                                        <Input placeholder="Activité / secteur" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
 
-                        <Row gutter={[16, 8]}>
-                            <Col span={12}>
-                                <Form.Item name="ptr_linkedin_url" label="LinkedIn">
-                                    <Input
-                                        placeholder="https://linkedin.com/company/..."
-                                        prefix={<LinkedinOutlined />}
-                                        suffix={linkedinUrl ? <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><LinkOutlined /></a> : null}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item name="ptr_pappers_url" label="Pappers">
-                                    <Input
-                                        placeholder="https://www.pappers.fr/entreprise/..."
-                                        suffix={pappersUrl ? <a href={pappersUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><LinkOutlined /></a> : null}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </div>
+                            <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="ptr_siret"
+                                        label="SIRET"
+                                        rules={[
+                                            { len: 14, message: "Le SIRET doit comporter 14 chiffres." },
+                                            { pattern: /^\d{14}$/, message: "Le SIRET ne doit contenir que des chiffres." },
+                                        ]}
+                                        extra={<span style={{ fontSize: 11 }}>14 chiffres — nécessaire pour la facturation électronique</span>}
+                                    >
+                                        <Input placeholder="12345678900012" maxLength={14} />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="ptr_vat_number"
+                                        label="N° TVA intracommunautaire"
+                                        rules={[{ pattern: /^[A-Z]{2}/, message: "Format : FR + 11 chiffres" }]}
+                                    >
+                                        <Input placeholder="FR12345678901" style={{ textTransform: "uppercase" }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_linkedin_url" label="LinkedIn">
+                                        <Input
+                                            placeholder="https://linkedin.com/company/..."
+                                            prefix={<LinkedinOutlined />}
+                                            suffix={linkedinUrl ? <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><LinkOutlined /></a> : null}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item name="ptr_pappers_url" label="Pappers">
+                                        <Input
+                                            placeholder="https://www.pappers.fr/entreprise/..."
+                                            suffix={pappersUrl ? <a href={pappersUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}><LinkOutlined /></a> : null}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </div>
+                        <div className="box" style={{marginTop:20}}>
+                            <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                    <Form.Item name="fk_usr_id_seller" label="Commercial">
+                                        <UserSelect initialData={entity?.seller} filters={{ is_seller: 1 }} />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                        </div>
                     </>
                 )
             }
@@ -590,15 +664,6 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                 label: `Prospect${opportunities.length > 0 ? ` (${opportunities.length})` : ''}`,
                 children: (
                     <>
-                        <div className="box">
-                            <Row gutter={[16, 8]}>
-                                <Col span={24}>
-                                    <Form.Item name="ptr_prospect_description" label="Description prospect">
-                                        <Input.TextArea rows={3} placeholder="Description / notes de prospection" />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </div>
                         <div className="box" style={{ marginTop: 15 }}>
                             <Divider titlePlacement="left" style={{ fontWeight: "600", marginTop: 0 }}>
                                 Opportunités
@@ -691,7 +756,7 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                                     rules={[{ required: true, message: "Compte comptable requis" }]}
                                 >
                                     <AccountSelect
-                                        filters={{ type: ['asset_receivable'], isActive: true }}
+                                        filters={{ type: ['asset_receivable'], isActive: true, code: '411%' }}
                                         loadInitially={!partnerId ? true : false}
                                         initialData={entity?.customer_account}
                                         accountSelectConfig={{
@@ -713,19 +778,6 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                                         placeholder="Compte auxiliaire"
                                         maxLength={8}
                                         onBlur={(e) => checkAuxiliaryAccount('customer', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={[16, 8]}>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="fk_usr_id_seller"
-                                    label="Commercial"
-                                >
-                                    <SellerSelect
-                                        initialData={entity?.seller}
                                     />
                                 </Form.Item>
                             </Col>
@@ -818,7 +870,7 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                                         rules={[{ required: true, message: "Compte comptable requis" }]}
                                     >
                                         <AccountSelect
-                                            filters={{ type: ['liability_payable'],isActive: true}}
+                                            filters={{ type: ['liability_payable'], isActive: true, code: '401%' }}
                                             loadInitially={!partnerId ? true : false}
                                             initialData={entity?.supplier_account}
                                             accountSelectConfig={{
@@ -886,6 +938,8 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                             entityType="partner"
                             entityId={partnerId}
                             permission="partners.edit"
+                            isCustomer={isCustomer}
+                            partnerName={partnerName}
                         />
                     </Suspense>
                 )
@@ -894,27 +948,25 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
 
 
 
-        // Ajouter l'onglet Contacts si partnerId existe
-        if (partnerId) {
-            items.push({
-                key: 'contacts',
-                label: `Contacts${contacts.length > 0 ? ` (${contacts.length})` : ''}`,
-                children: (
-                    <Spin spinning={loadingContacts}>
-                        <Row gutter={[16, 8]} style={{ marginBottom: 8 }}>
-                            <Col span={24}>
-                                <Space wrap>
-                                    <CanAccess permission="contacts.create">
-                                        <Button
-                                            icon={<PlusOutlined />}
-                                            onClick={() => {
-                                                setSelectedContactId(null);
-                                                setContactDrawerOpen(true);
-                                            }}
-                                        >
-                                            Nouveau contact
-                                        </Button>
-                                    </CanAccess>
+        // Onglet Contacts — toujours affiché (sauvegarde auto si partenaire non encore créé)
+        items.push({
+            key: 'contacts',
+            label: `Contacts${contacts.length > 0 ? ` (${contacts.length})` : ''}`,
+            children: (
+                <Spin spinning={loadingContacts}>
+                    <Row gutter={[16, 8]} style={{ marginBottom: 8 }}>
+                        <Col span={24}>
+                            <Space wrap>
+                                <CanAccess permission="contacts.create">
+                                    <Button
+                                        icon={<PlusOutlined />}
+                                        onClick={handleNewContactClick}
+                                    >
+                                        Nouveau contact
+
+                                    </Button>
+                                </CanAccess>
+                                {localPartnerId && (
                                     <CanAccess permission="contacts.edit">
                                         <Button
                                             icon={<LinkOutlined />}
@@ -926,59 +978,59 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                                             Lier un contact existant
                                         </Button>
                                     </CanAccess>
-                                </Space>
+                                )}
+                            </Space>
+                        </Col>
+                        {linkContactOpen && (
+                            <Col span={24}>
+                                <Card size="small" style={{ background: '#fafafa' }}>
+                                    <Space>
+                                        <ContactSelect
+                                            style={{ width: 320 }}
+                                            filters={{ excludeIds: contacts.map(c => c.id) }}
+                                            value={linkContactId}
+                                            onChange={setLinkContactId}
+                                            placeholder="Rechercher un contact..."
+                                        />
+                                        <Button
+                                            type="primary"
+                                            icon={<LinkOutlined />}
+                                            onClick={handleLinkContact}
+                                            disabled={!linkContactId}
+                                            loading={linkingContact}
+                                        >
+                                            Lier
+                                        </Button>
+                                        <Button onClick={() => {
+                                            setLinkContactOpen(false);
+                                            setLinkContactId(null);
+                                        }}>
+                                            Annuler
+                                        </Button>
+                                    </Space>
+                                </Card>
                             </Col>
-                            {linkContactOpen && (
-                                <Col span={24}>
-                                    <Card size="small" style={{ background: '#fafafa' }}>
-                                        <Space>
-                                            <ContactSelect
-                                                style={{ width: 320 }}
-                                                filters={{ excludeIds: contacts.map(c => c.id) }}
-                                                value={linkContactId}
-                                                onChange={setLinkContactId}
-                                                placeholder="Rechercher un contact..."
-                                            />
-                                            <Button
-                                                type="primary"
-                                                icon={<LinkOutlined />}
-                                                onClick={handleLinkContact}
-                                                disabled={!linkContactId}
-                                                loading={linkingContact}
-                                            >
-                                                Lier
-                                            </Button>
-                                            <Button onClick={() => {
-                                                setLinkContactOpen(false);
-                                                setLinkContactId(null);
-                                            }}>
-                                                Annuler
-                                            </Button>
-                                        </Space>
-                                    </Card>
-                                </Col>
-                            )}
-                        </Row>
-                        <Table
-                            columns={contactColumns}
-                            dataSource={contacts}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                            bordered
-                            locale={{ emptyText: 'Aucun contact associé' }}
-                            onRow={(record) => ({
-                                onClick: () => {
-                                    setSelectedContactId(record.id);
-                                    setContactDrawerOpen(true);
-                                },
-                                style: { cursor: 'pointer' },
-                            })}
-                        />
-                    </Spin>
-                )
-            });
-        }
+                        )}
+                    </Row>
+                    <Table
+                        columns={contactColumns}
+                        dataSource={contacts}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        bordered
+                        locale={{ emptyText: 'Aucun contact associé' }}
+                        onRow={(record) => ({
+                            onClick: () => {
+                                setSelectedContactId(record.id);
+                                setContactDrawerOpen(true);
+                            },
+                            style: { cursor: 'pointer' },
+                        })}
+                    />
+                </Spin>
+            )
+        });
 
         // Ajouter l'onglet Objets Liés si partnerId existe
         if (partnerId) {
@@ -1014,10 +1066,20 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                     </Suspense>
                 )
             });
+
+            items.push({
+                key: 'history',
+                label: 'Historique',
+                children: (
+                    <Suspense fallback={<TabLoader />}>
+                        <HistoryTimeline entityType="partner" entityId={partnerId} />
+                    </Suspense>
+                )
+            });
         }
 
         return items;
-    }, [isCustomer, isSupplier, isProspect, auxiliaryCustomerError, auxiliarySupplierError, checkAuxiliaryAccount, customerUseBillingAddress, supplierUseBillingAddress, PaymentModeSelect, PaymentConditionSelect, SellerSelect, form, partnerId, documentsCount, contacts, loadingContacts, contactColumns, opportunities, loadingOpportunities, opportunityColumns]);
+    }, [isCustomer, isSupplier, isProspect, auxiliaryCustomerError, auxiliarySupplierError, checkAuxiliaryAccount, customerUseBillingAddress, supplierUseBillingAddress, PaymentModeSelect, PaymentConditionSelect, SellerSelect, form, partnerId, localPartnerId, handleNewContactClick, documentsCount, contacts, loadingContacts, contactColumns, opportunities, loadingOpportunities, opportunityColumns]);
 
 
     /**
@@ -1025,51 +1087,58 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
      */
     const drawerActions = (
 
-        <Space style={{ width: "100%", display: "flex", paddingRight: "15px", justifyContent: "flex-end" }}>
-            {partnerId && (
-                <>
-                    <CanAccess permission="partners.create">
-                        <Button
-                            type="secondary"
-                            style={{ marginRight: 30 }}
-                            icon={<PlusOutlined />}
-                            onClick={handleDuplicate}
-                        >
-                            Dupliquer
+        <div style={{ width: "100%", display: "flex", alignItems: "center", paddingRight: 15, paddingLeft: 15  }}>
+            {/* Gauche */}
+            {localPartnerId && isProspect && !isProspectArchived && (
+                <CanAccess permission={partnerPerms.edit}>
+                    <Popconfirm
+                        title="Archiver ce prospect"
+                        description="Il ne sera plus visible dans la liste des prospects."
+                        onConfirm={handleArchive}
+                        okText="Archiver"
+                        cancelText="Annuler"
+                       
+                    >
+                        <Button icon={<InboxOutlined />} loading={archiveLoading}>
+                            Archiver prospect
                         </Button>
-                    </CanAccess>
-                    <div style={{ flex: 1 }}></div>
-                    <CanAccess permission="partners.delete">
-                        <Popconfirm
-                            title="Supprimer ce partenaire"
-                            description="Êtes-vous sûr de vouloir supprimer ce partenaire ?"
-                            onConfirm={handleDelete}
-                            okText="Oui"
-                            cancelText="Non"
-                        >
-                            <Button
-                                danger
-                                icon={<DeleteOutlined />}
-                            >
-                                Supprimer
-                            </Button>
-                        </Popconfirm>
-                    </CanAccess>
-                </>
+                    </Popconfirm>
+                </CanAccess>
             )}
 
-            <Button onClick={handleClose}>Annuler</Button>
-            <CanAccess permission={partnerId ? "partners.edit" : "partners.create"}>
-                <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={() => form.submit()}
-                    loading={loading}
-                >
-                    {partnerId ? "Enregistrer" : "Créer"}
-                </Button>
-            </CanAccess>
-        </Space>
+            {/* Séparateur flexible */}
+            <div style={{ flex: 1 }} />
+
+            {/* Droite */}
+            <Space>
+                {localPartnerId && (
+                    <>
+                        <CanAccess permission={partnerPerms.create}>
+                            <Button type="secondary" icon={<PlusOutlined />} onClick={handleDuplicate}>
+                                Dupliquer
+                            </Button>
+                        </CanAccess>
+                        <CanAccess permission={partnerPerms.delete}>
+                            <Popconfirm
+                                title="Supprimer ce partenaire"
+                                description="Êtes-vous sûr de vouloir supprimer ce partenaire ?"
+                                onConfirm={handleDelete}
+                                okText="Oui"
+                                cancelText="Non"
+                            >
+                                <Button danger icon={<DeleteOutlined />}>Supprimer</Button>
+                            </Popconfirm>
+                        </CanAccess>
+                    </>
+                )}
+                <Button onClick={handleClose}>Annuler</Button>
+                <CanAccess permission={localPartnerId ? partnerPerms.edit : partnerPerms.createNew}>
+                    <Button type="primary" icon={<SaveOutlined />} onClick={() => form.submit()} loading={loading}>
+                        {localPartnerId ? "Enregistrer" : "Créer"}
+                    </Button>
+                </CanAccess>
+            </Space>
+        </div>
     );
 
     return (
@@ -1079,7 +1148,7 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                 placement="right"
                 onClose={handleClose}
                 open={open}
-                size={drawerSize}
+                size={900}
                 footer={drawerActions}
                 destroyOnHidden
                 forceRender
@@ -1113,7 +1182,7 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                 contactId={selectedContactId}
                 open={contactDrawerOpen}
                 onClose={() => setContactDrawerOpen(false)}
-                initialValues={partnerId ? { fk_ptr_id: partnerId } : {}}
+                initialValues={localPartnerId ? { fk_ptr_id: localPartnerId } : {}}
                 onSubmit={() => {
                     setContactDrawerOpen(false);
                     loadContacts();
@@ -1125,11 +1194,12 @@ export default function Partner({ partnerId, open, onClose, onSubmit, drawerSize
                 opportunityId={selectedOppId}
                 open={oppDrawerOpen}
                 onClose={() => setOppDrawerOpen(false)}
-                defaultValues={partnerId ? { fk_ptr_id: partnerId } : {}}
+                defaultValues={partnerId ? { fk_ptr_id: partnerId, partnerInitialData: { ptr_id: partnerId, ptr_name: partnerName } } : {}}
                 onSubmit={() => {
                     setOppDrawerOpen(false);
                     loadOpportunities();
                 }}
+                zIndex={1020}
             />
 
         </>

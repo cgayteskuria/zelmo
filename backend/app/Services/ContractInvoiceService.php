@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\BizDocumentLineModel;
 use App\Models\ContractModel;
 use App\Models\InvoiceModel;
 use App\Models\ContractInvoiceModel;
 use App\Models\InvoiceLineModel;
 use App\Models\DurationsModel;
+use Carbon\Carbon;
 use App\Services\InvoiceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -56,7 +58,11 @@ class ContractInvoiceService
             $invoice = $this->invoiceService->createInvoice($invoiceData, $userId);
 
             // 5. Copier les lignes du contrat vers la facture
-            $this->copyContractLinesToInvoice($contract, $invoice);
+            // Pour un contrat résilié avec facturation restante, on facture toutes les périodes en une seule fois
+            $periodCount = ($contract->con_status === ContractModel::STATUS_TERMINATED && $contract->con_invoice_remaining)
+                ? $this->countRemainingPeriods($contract)
+                : 1;
+            $this->copyContractLinesToInvoice($contract, $invoice, $periodCount);
 
 
             // 7. Créer le lien contrat-facture
@@ -161,8 +167,10 @@ class ContractInvoiceService
             ];
         }
 
-        // Vérifier le statut du contrat (ACTIVE=1 ou TERMINATING=2)
-        if (!in_array($contract->con_status, [1, 2])) {
+        // Vérifier le statut du contrat (ACTIVE=1, TERMINATING=2, ou TERMINATED=3 avec facturation restante)
+        $statusAllowed = in_array($contract->con_status, [1, 2])
+            || ($contract->con_status === ContractModel::STATUS_TERMINATED && $contract->con_invoice_remaining);
+        if (!$statusAllowed) {
             return [
                 'valid' => false,
                 'message' => "Le contrat {$contract->con_number} n'est pas actif (statut: {$contract->con_status})"
@@ -187,12 +195,14 @@ class ContractInvoiceService
             ];
         }
 
-        // Vérifier qu'il y a des lignes d'abonnement
-        $subscriptionLines = $contract->lines->where('col_is_subscription', 1);
+        // Vérifier qu'il y a des lignes d'abonnement actives (col_status = 1)
+        $subscriptionLines = $contract->lines
+            ->where('col_is_subscription', 1)
+            ->where('col_status', \App\Models\ContractLineModel::STATUS_ACTIVE);
         if ($subscriptionLines->isEmpty()) {
             return [
                 'valid' => false,
-                'message' => "Le contrat {$contract->con_number} n'a pas de lignes d'abonnement"
+                'message' => "Le contrat {$contract->con_number} n'a pas de lignes d'abonnement actives (toutes en attente d'activation ?)"
             ];
         }
 
@@ -255,24 +265,63 @@ class ContractInvoiceService
      * @param InvoiceModel $invoice
      * @return void
      */
-    protected function copyContractLinesToInvoice(ContractModel $contract, InvoiceModel $invoice): void
+    protected function copyContractLinesToInvoice(ContractModel $contract, InvoiceModel $invoice, int $periodCount = 1): void
     {
-        // Récupérer uniquement les lignes d'abonnement
+        // Calculer les dates de début et fin de période pour le titre
+        $periodStart = Carbon::parse($contract->con_next_invoice_date);
+
+        if ($periodCount > 1 && $contract->con_end_commitment) {
+            // Solde des mois restants : la période va jusqu'à la fin d'engagement
+            $periodEnd = Carbon::parse($contract->con_end_commitment);
+        } else {
+            // Période normale : prochaine échéance - 1 jour
+            $nextRaw = DurationsModel::calculateNextDate($contract->fk_dur_id_invoicing, $contract->con_next_invoice_date, false);
+            $periodEnd = $nextRaw
+                ? Carbon::parse($nextRaw)->subDay()
+                : $periodStart->copy()->endOfMonth();
+        }
+
+        $titleLabel = 'Abonnement pour la période du '
+            . $periodStart->format('d/m/Y')
+            . ' au '
+            . $periodEnd->format('d/m/Y');
+
+        InvoiceLineModel::create([
+            'fk_inv_id'           => $invoice->inv_id,
+            'inl_prtlib'          => $titleLabel,
+            'inl_prtdesc'         => null,
+            'inl_prttype'         => null,
+            'inl_qty'             => 0,
+            'inl_priceunitht'     => 0,
+            'inl_discount'        => 0,
+            'inl_mtht'            => 0,
+            'inl_order'           => 0,
+            'inl_type'            => BizDocumentLineModel::LINE_TYPE_SEPARATOR,
+            'inl_tax_rate'        => 0,
+            'fk_tax_id'           => null,
+            'inl_purchasepriceunitht' => 0,
+        ]);
+
+        // Récupérer uniquement les lignes d'abonnement actives
         $contractLines = $contract->lines()
             ->where('col_is_subscription', 1)
+            ->where('col_status', \App\Models\ContractLineModel::STATUS_ACTIVE)
             ->orderBy('col_order')
             ->get();
 
         foreach ($contractLines as $contractLine) {
+            $qty   = $contractLine->col_qty * $periodCount;
+            $mtht  = $contractLine->col_mtht * $periodCount;
+
             $invoiceLineData = [
                 'fk_inv_id' => $invoice->inv_id,
                 'inl_prtlib' => $contractLine->col_prtlib,
                 'inl_prtdesc' => $contractLine->col_prtdesc,
                 'inl_prttype' => $contractLine->col_prttype,
-                'inl_qty' => $contractLine->col_qty,
+                'inl_qty' => $qty,
                 'inl_priceunitht' => $contractLine->col_priceunitht,
                 'inl_discount' => $contractLine->col_discount,
-                'inl_mtht' => $contractLine->col_mtht,
+                'inl_mtht' => $mtht,
                 'fk_prt_id' => $contractLine->fk_prt_id,
                 'inl_order' => $contractLine->col_order,
                 'inl_type' => $contractLine->col_type,
@@ -314,6 +363,14 @@ class ContractInvoiceService
             return;
         }
 
+        // Pour un contrat résilié avec facturation restante, toutes les périodes ont été facturées en une fois
+        if ($contract->con_status === ContractModel::STATUS_TERMINATED && $contract->con_invoice_remaining) {
+            $contract->con_next_invoice_date = null;
+            $contract->con_invoice_remaining = 0;
+            $contract->save();
+            return;
+        }
+
         // Utiliser la méthode calculateNextDate du modèle DurationsModel
         $nextDate = DurationsModel::calculateNextDate(
             $contract->fk_dur_id_invoicing,
@@ -322,12 +379,23 @@ class ContractInvoiceService
         );
 
         if ($nextDate) {
-            $contract->con_next_invoice_date = $nextDate;
-            $contract->save();
+            // Contrat en cours de résiliation avec préavis : vérifier si toutes les périodes sont facturées
+            if (
+                $contract->con_status === ContractModel::STATUS_TERMINATING
+                && $contract->con_terminated_date
+                && $nextDate > $contract->con_terminated_date
+            ) {
+                // Toutes les périodes ont été facturées jusqu'à la date de résiliation
+                DB::table('contract_con')->where('con_id', $contract->con_id)->update([
+                    'con_next_invoice_date' => null,
+                    'con_status' => ContractModel::STATUS_TERMINATED,
+                ]);
+                return;
+            }
 
-            Log::info("Prochaine date de facturation mise à jour", [
-                'contract_id' => $contract->con_id,
-                'next_invoice_date' => $contract->con_next_invoice_date
+            // Utiliser une mise à jour directe pour bypasser le boot hook (TERMINATING ne peut pas être modifié via Eloquent)
+            DB::table('contract_con')->where('con_id', $contract->con_id)->update([
+                'con_next_invoice_date' => $nextDate,
             ]);
         } else {
             Log::error("Impossible de calculer la prochaine date de facturation", [
@@ -335,5 +403,35 @@ class ContractInvoiceService
                 'dur_id' => $contract->fk_dur_id_invoicing
             ]);
         }
+    }
+
+    /**
+     * Compte le nombre de périodes de facturation restantes jusqu'à la fin d'engagement
+     */
+    public function countRemainingPeriods(ContractModel $contract): int
+    {
+        if (!$contract->fk_dur_id_invoicing || !$contract->con_next_invoice_date || !$contract->con_end_commitment) {
+            return 1;
+        }
+
+        $count = 0;
+        $currentDate = $contract->con_next_invoice_date;
+        $terminatedDate = $contract->con_end_commitment;
+        $safetyLimit = 1200;
+
+        while ($currentDate <= $terminatedDate && $safetyLimit-- > 0) {
+            $count++;
+            $nextDate = DurationsModel::calculateNextDate(
+                $contract->fk_dur_id_invoicing,
+                $currentDate,
+                false
+            );
+            if (!$nextDate || $nextDate === $currentDate) {
+                break;
+            }
+            $currentDate = $nextDate;
+        }
+
+        return max(1, $count);
     }
 }

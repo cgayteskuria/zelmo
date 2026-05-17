@@ -15,7 +15,12 @@ class ApiApplicationController extends Controller
     {
         $user = $request->user();
 
-        $apps = ApplicationModel::orderBy('app_order')->get();
+        $apps = ApplicationModel::with(['menus' => function ($q) {
+            $q->where('mnu_type', 'item')
+              ->whereNotNull('mnu_href')
+              ->where('mnu_href', '!=', '')
+              ->orderBy('mnu_order');
+        }])->orderBy('app_order')->get();
 
         $accessible = $apps->filter(function ($app) use ($user) {
             // NULL = accessible à tout utilisateur authentifié
@@ -32,6 +37,24 @@ class ApiApplicationController extends Controller
             }
 
             return false;
+        })->map(function ($app) use ($user) {
+            // Vérifier si l'utilisateur peut accéder à app_root_href
+            $rootMenu = $app->menus->first(fn($m) => $m->mnu_href === $app->app_root_href);
+            $canAccessRoot = !$rootMenu
+                || empty($rootMenu->fk_permission_name)
+                || $user->can($rootMenu->fk_permission_name);
+
+            // Si non, rediriger vers le premier item de menu accessible
+            if (!$canAccessRoot) {
+                $firstAccessible = $app->menus->first(
+                    fn($m) => empty($m->fk_permission_name) || $user->can($m->fk_permission_name)
+                );
+                if ($firstAccessible) {
+                    $app->app_root_href = $firstAccessible->mnu_href;
+                }
+            }
+
+            return $app;
         });
 
         return response()->json([

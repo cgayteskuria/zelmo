@@ -72,7 +72,7 @@ export default function TimeInvoicing() {
             await reload();
             navigate(`/invoices/${res.invoice_id}`);
         } catch (err) {
-            message.error(err?.response?.data?.message ?? "Erreur lors de la génération.");
+            message.error(err?.message ?? "Erreur lors de la génération.");
         }
     };
 

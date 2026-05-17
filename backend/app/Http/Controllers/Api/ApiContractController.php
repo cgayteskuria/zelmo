@@ -420,6 +420,13 @@ class ApiContractController extends ApiBizDocumentController
             // Date de résiliation par défaut
             $conTerminatedDate = $dateNotice;
 
+            // Calculer le nombre de périodes restantes jusqu'à la fin d'engagement (pour l'affichage)
+            $remainingPeriods = null;
+            if ($contract->con_is_invoicing_mgmt && $contract->con_next_invoice_date && $contract->con_end_commitment) {
+                $contractInvoiceService = new \App\Services\ContractInvoiceService();
+                $remainingPeriods = $contractInvoiceService->countRemainingPeriods($contract);
+            }
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -429,6 +436,8 @@ class ApiContractController extends ApiBizDocumentController
                     'date_notice' => $dateNotice,
                     'con_terminated_date' => $conTerminatedDate,
                     'fk_dur_id_notice' => $contract->fk_dur_id_notice,
+                    'con_is_invoicing_mgmt' => (bool) $contract->con_is_invoicing_mgmt,
+                    'remaining_periods' => $remainingPeriods,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -449,9 +458,75 @@ class ApiContractController extends ApiBizDocumentController
     public function terminate($contractId, Request $request): JsonResponse
     {
         try {
+            // Validation des champs entrants
+            $request->validate([
+                'terminated_date'    => 'required|date_format:Y-m-d',
+                'terminated_reason'  => 'required|string|max:255',
+                'termination_type'   => 'required|in:notice,immediate,immediate_invoice',
+                'terminated_invoice_date' => 'nullable|date_format:Y-m-d',
+            ]);
+
             $contract = ContractModel::findOrFail($contractId);
 
-            $contract->con_status = ContractModel::STATUS_TERMINATED;
+            // Le contrat doit être ACTIF pour pouvoir être résilié
+            if ($contract->con_status !== ContractModel::STATUS_ACTIVE) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seul un contrat actif peut être résilié (statut actuel : ' . $contract->con_status . ')',
+                ], 422);
+            }
+
+            $terminatedDate = Carbon::parse($request->input('terminated_date'));
+            $terminationType = $request->input('termination_type');
+
+            // La date ne doit pas être antérieure à la date du contrat
+            if ($contract->con_date && $terminatedDate->lt(Carbon::parse($contract->con_date))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La date de résiliation ne peut pas être antérieure à la date du contrat (' . Carbon::parse($contract->con_date)->format('d/m/Y') . ')',
+                ], 422);
+            }
+
+            // La date ne doit pas être antérieure à la première facture émise
+            $firstInvoice = DB::table('contract_invoice_coi as coi')
+                ->join('invoice_inv as inv', 'coi.fk_inv_id', '=', 'inv.inv_id')
+                ->where('fk_con_id', $contractId)
+                ->orderBy('inv.inv_date', 'ASC')
+                ->value('inv.inv_date');
+
+            if ($firstInvoice && $terminatedDate->lt(Carbon::parse($firstInvoice))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La date de résiliation ne peut pas être antérieure à la première facture émise (' . Carbon::parse($firstInvoice)->format('d/m/Y') . ')',
+                ], 422);
+            }
+
+            // Pour la facturation résiduelle, la fin d'engagement doit être renseignée
+            if ($terminationType === 'immediate_invoice' && empty($contract->con_end_commitment)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La date de fin d\'engagement doit être renseignée pour facturer les mois restants dus',
+                ], 422);
+            }
+
+            if ($terminationType === 'notice') {
+                $contract->con_status = ContractModel::STATUS_TERMINATING;
+                $contract->con_invoice_remaining = 0;
+            } else {
+                $contract->con_status = ContractModel::STATUS_TERMINATED;
+                $contract->con_invoice_remaining = ($terminationType === 'immediate_invoice') ? 1 : 0;
+
+                // Si la date effective est antérieure à la prochaine date de facturation,
+                // on aligne con_next_invoice_date sur la date effective pour que la facture
+                // couvre la bonne période de départ
+                if (
+                    $contract->con_next_invoice_date
+                    && $terminatedDate->lt(Carbon::parse($contract->con_next_invoice_date))
+                ) {
+                    $contract->con_next_invoice_date = $terminatedDate->format('Y-m-d');
+                }
+            }
+
             $contract->con_terminated_date = $request->input('terminated_date');
             $contract->con_terminated_invoice_date = $request->input('terminated_invoice_date');
             $contract->con_terminated_reason = $request->input('terminated_reason');
@@ -462,6 +537,11 @@ class ApiContractController extends ApiBizDocumentController
                 'message' => 'Contrat résilié avec succès',
                 'data' => $contract,
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -585,7 +665,13 @@ class ApiContractController extends ApiBizDocumentController
             $data = ContractModel::join('partner_ptr', 'partner_ptr.ptr_id', '=', 'contract_con.fk_ptr_id')
                 ->where('con_operation', 1) // Contrats clients
                 ->where('con_is_invoicing_mgmt', 1) // Contrats facturable
-                ->whereIn('con_status', [1, 2]) // ACTIVE ou TERMINATING
+                ->where(function ($q) {
+                    $q->whereIn('con_status', [1, 2]) // ACTIVE ou TERMINATING
+                      ->orWhere(function ($q2) {
+                          $q2->where('con_status', ContractModel::STATUS_TERMINATED)
+                             ->where('con_invoice_remaining', 1); // Résiliés avec facturation restante
+                      });
+                })
                 ->whereNotNull('con_next_invoice_date')
                 ->select([
                     'con_id as id',
@@ -597,7 +683,8 @@ class ApiContractController extends ApiBizDocumentController
                     'con_totalttc',
                     'con_next_invoice_date',
                     'con_status',
-                    'con_operation'
+                    'con_operation',
+                    'con_invoice_remaining',
                 ])
                 ->orderBy('con_next_invoice_date', 'asc')
                 ->get();

@@ -303,15 +303,6 @@ export const accountingExportsApi = {
     }),
 };
 
-
-/**
- * API Cases de déclaration TVA (mapping comptable par case)
- */
-export const vatBoxesApi = {
-  list:           (regime = 'reel') => api.get('/vat-boxes', { params: { regime } }),
-  updateAccounts: (items)           => api.put('/vat-boxes/accounts', items),
-};
-
 /**
  * API Mapping TVA (admin — lecture du paramétrage CA3/CA12)
  */
